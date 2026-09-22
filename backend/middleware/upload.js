@@ -70,6 +70,8 @@ const uploadToCloudinary = (folder = 'annseva') => {
         uploadStream.end(req.file.buffer);
       });
 
+
+      
       
       req.file.cloudinaryUrl = result.secure_url;
       req.file.cloudinaryId = result.public_id;
