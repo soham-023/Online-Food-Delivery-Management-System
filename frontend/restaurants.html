@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurants — AnnSeva</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <div class="section-header fade-in">
+        <div>
+          <h1 class="section-title">Restaurants 🍽️</h1>
+          <p class="section-subtitle" id="results-text">Discover amazing restaurants near you</p>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="flex gap-2 mb-3 fade-in stagger-1" style="flex-wrap: wrap;">
+        <div class="hero-search" style="flex: 1; min-width: 250px;">
+          <input type="text" id="search-input" placeholder="Search restaurants or cuisine..." oninput="debouncedSearch()">
+          <button class="voice-search-btn" onclick="startVoiceSearch('search-input')" title="Search by voice" id="voice-btn-input" aria-label="Voice Search">🎤</button>
+          <button onclick="searchRestaurants()" aria-label="Search">🔍</button>
+        </div>
+        <select class="form-input" id="sort-select" style="width: auto; min-width: 160px;" onchange="searchRestaurants()">
+          <option value="">Sort by</option>
+          <option value="rating">⭐ Rating</option>
+          <option value="name">🔤 Name</option>
+          <option value="delivery">🚚 Delivery Fee</option>
+        </select>
+      </div>
+
+      <!-- Category Pills -->
+      <div class="category-scroll fade-in stagger-2" id="rest-categories">
+        <div class="category-pill active" onclick="filterCategory('', this)"><div class="cat-icon">🍽️</div>All</div>
+        <div class="category-pill" onclick="filterCategory('North Indian', this)"><div class="cat-icon">🍛</div>North Indian</div>
+        <div class="category-pill" onclick="filterCategory('South Indian', this)"><div class="cat-icon">🥘</div>South Indian</div>
+        <div class="category-pill" onclick="filterCategory('Italian', this)"><div class="cat-icon">🍕</div>Italian</div>
+        <div class="category-pill" onclick="filterCategory('Chinese', this)"><div class="cat-icon">🥡</div>Chinese</div>
+        <div class="category-pill" onclick="filterCategory('American', this)"><div class="cat-icon">🍔</div>American</div>
+        <div class="category-pill" onclick="filterCategory('Bakery', this)"><div class="cat-icon">🍰</div>Bakery</div>
+      </div>
+
+      <!-- Restaurant Grid -->
+      <div class="grid grid-3" id="restaurant-list">
+        <div class="loader" style="grid-column: 1/-1;"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex items-center justify-between mt-4" id="pagination" style="display: none;">
+        <button class="btn btn-secondary btn-sm" id="prev-btn" onclick="changePage(-1)">← Previous</button>
+        <span class="text-muted" id="page-info"></span>
+        <button class="btn btn-secondary btn-sm" id="next-btn" onclick="changePage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    let currentPage = 1;
+    let currentCuisine = '';
+
+    const debouncedSearch = debounce(searchRestaurants, 400);
+
+    // Check URL params
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('search')) {
+      document.getElementById('search-input').value = params.get('search');
+    }
+    if (params.get('category')) {
+      currentCuisine = params.get('category');
+    }
+
+    async function searchRestaurants() {
+      const search = document.getElementById('search-input').value;
+      const sort = document.getElementById('sort-select').value;
+
+      try {
+        let url = `/restaurants?page=${currentPage}&limit=12`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (sort) url += `&sort=${sort}`;
+        if (currentCuisine) url += `&cuisine=${encodeURIComponent(currentCuisine)}`;
+
+        const data = await api.get(url);
+        const el = document.getElementById('restaurant-list');
+
+        document.getElementById('results-text').textContent = `${data.pagination.total} restaurant${data.pagination.total !== 1 ? 's' : ''} found`;
+
+        if (data.data.length === 0) {
+          el.innerHTML = `<div class="empty-state" style="grid-column: 1/-1;">
+            <div class="empty-state-icon">🔍</div>
+            <h3 class="empty-state-title">No restaurants found</h3>
+            <p class="empty-state-text">Try a different search or category</p>
+          </div>`;
+          document.getElementById('pagination').style.display = 'none';
+          return;
+        }
+
+        el.innerHTML = data.data.map(r => `
+          <div class="restaurant-card fade-in" onclick="location.href='/restaurant.html?id=${r._id}'">
+            <div class="card-img-wrapper">
+              <img src="${r.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'}" alt="${r.name}" class="card-img" loading="lazy">
+              <button class="wishlist-btn" onclick="event.stopPropagation(); toggleWishlistRest('${r._id}', this)">♡</button>
+            </div>
+            <div class="card-body">
+              <h3 class="card-title">${r.name}</h3>
+              <p class="card-text" style="-webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;">${r.description}</p>
+              <div class="cuisine-tags">${r.cuisine.map(c => `<span class="cuisine-tag">${c}</span>`).join('')}</div>
+              <div class="restaurant-meta">
+                <span>⭐ ${r.rating} (${r.numReviews})</span>
+                <span>🕐 ${r.deliveryTime}</span>
+                <span>💰 ${formatPrice(r.deliveryCharge)}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+
+        // Pagination
+        const pg = data.pagination;
+        const pgEl = document.getElementById('pagination');
+        if (pg.pages > 1) {
+          pgEl.style.display = 'flex';
+          document.getElementById('page-info').textContent = `Page ${pg.page} of ${pg.pages}`;
+          document.getElementById('prev-btn').disabled = pg.page <= 1;
+          document.getElementById('next-btn').disabled = pg.page >= pg.pages;
+        } else {
+          pgEl.style.display = 'none';
+        }
+      } catch (err) {
+        document.getElementById('restaurant-list').innerHTML = '<p class="text-muted text-center" style="grid-column:1/-1;">Failed to load restaurants</p>';
+      }
+    }
+
+    function filterCategory(cuisine, el) {
+      currentCuisine = cuisine;
+      currentPage = 1;
+      document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      searchRestaurants();
+    }
+
+    function changePage(dir) {
+      currentPage += dir;
+      searchRestaurants();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function toggleWishlistRest(id, btn) {
+      if (!auth.requireAuth()) return;
+      try {
+        const data = await api.post(`/wishlist/restaurant/${id}`);
+        btn.classList.toggle('active', data.added);
+        btn.innerHTML = data.added ? '♥' : '♡';
+        showToast(data.added ? 'Added to favorites!' : 'Removed', data.added ? 'success' : 'info');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    searchRestaurants();
+
+    // ===== VOICE SEARCH =====
+    function startVoiceSearch(inputId) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        showToast('Voice search is not supported in your browser. Try Chrome or Edge.', 'warning');
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      const btn = document.getElementById('voice-btn-' + inputId.split('-').pop());
+      const input = document.getElementById(inputId);
+
+      btn.classList.add('voice-listening');
+      btn.innerHTML = '🔴';
+      showToast('🎤 Listening... Speak now!', 'info', 2000);
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        input.value = finalTranscript || interimTranscript;
+        if (finalTranscript) {
+          showToast(`🎤 Heard: "${finalTranscript}"`, 'success', 2000);
+          setTimeout(() => searchRestaurants(), 500);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        if (event.error === 'no-speech') {
+          showToast('No speech detected. Please try again.', 'warning');
+        } else if (event.error === 'not-allowed') {
+          showToast('Microphone access denied. Please allow microphone.', 'error');
+        } else {
+          showToast('Voice search error. Please try again.', 'error');
+        }
+        btn.classList.remove('voice-listening');
+        btn.innerHTML = '🎤';
+      };
+
+      recognition.onend = () => {
+        btn.classList.remove('voice-listening');
+        btn.innerHTML = '🎤';
+      };
+
+      recognition.start();
+    }
+  </script>
+</body>
+</html>

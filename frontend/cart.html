@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart — AnnSeva</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <h1 class="section-title fade-in">Your Cart 🛒</h1>
+      <p class="section-subtitle mb-3 fade-in" id="cart-subtitle">Review your items</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 380px; gap: 32px;" id="cart-layout">
+        <!-- Cart Items -->
+        <div id="cart-items">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Cart Summary -->
+        <div id="cart-summary" style="display: none;">
+          <div class="summary-box">
+            <h3 style="margin-bottom: 16px; font-size: 1.1rem;">Order Summary</h3>
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span id="subtotal">₹0</span>
+            </div>
+            <div class="summary-row">
+              <span>GST (5%)</span>
+              <span id="tax">₹0</span>
+            </div>
+            <div class="summary-row">
+              <span>Delivery Charge</span>
+              <span id="delivery-charge">₹40</span>
+            </div>
+            
+            <!-- Coupon -->
+            <hr class="summary-divider">
+            <div class="coupon-input-group mb-2">
+              <input type="text" class="form-input" id="coupon-code" placeholder="Coupon code">
+              <button class="btn btn-secondary btn-sm" onclick="applyCoupon()">Apply</button>
+            </div>
+            <div id="coupon-result" style="display: none;" class="mb-2">
+              <div class="summary-row text-green">
+                <span>Discount</span>
+                <span id="discount-amount">-₹0</span>
+              </div>
+            </div>
+
+            <div class="summary-row total">
+              <span>Total</span>
+              <span id="total-price">₹0</span>
+            </div>
+
+            <button class="btn btn-primary btn-block btn-lg mt-3" onclick="goToCheckout()">
+              Proceed to Checkout →
+            </button>
+            <button class="btn btn-secondary btn-block btn-sm mt-2" onclick="clearCart()">
+              🗑️ Clear Cart
+            </button>
+          </div>
+
+          <!-- Available Coupons -->
+          <div class="glass-card mt-3" style="padding: 18px;">
+            <h4 style="font-size: 0.9rem; margin-bottom: 12px;">🎟️ Available Coupons</h4>
+            <div id="available-coupons"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+
+    let cartData = null;
+    let deliveryCharge = 40;
+    let discountValue = 0;
+    let appliedCoupon = '';
+
+    async function loadCart() {
+      try {
+        const data = await api.get('/cart');
+        cartData = data.data;
+        const el = document.getElementById('cart-items');
+
+        if (!cartData.items || cartData.items.length === 0) {
+          el.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">🛒</div>
+              <h3 class="empty-state-title">Your cart is empty</h3>
+              <p class="empty-state-text">Looks like you haven't added anything yet</p>
+              <a href="/restaurants.html" class="btn btn-primary">Browse Restaurants →</a>
+            </div>`;
+          document.getElementById('cart-summary').style.display = 'none';
+          document.getElementById('cart-subtitle').textContent = 'Your cart is empty';
+          return;
+        }
+
+        document.getElementById('cart-summary').style.display = 'block';
+        document.getElementById('cart-subtitle').textContent = `${cartData.items.length} item${cartData.items.length > 1 ? 's' : ''} in your cart`;
+
+        el.innerHTML = cartData.items.map(item => `
+          <div class="cart-item fade-in" id="cart-item-${item._id}">
+            <img src="${item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200'}" alt="${item.name}" class="cart-item-img">
+            <div class="cart-item-info">
+              <div class="cart-item-name">${item.name}</div>
+              <div class="cart-item-price">${formatPrice(item.price)} each</div>
+            </div>
+            <div class="qty-control">
+              <button class="qty-btn" onclick="updateQty('${item._id}', ${item.quantity - 1})">−</button>
+              <span class="qty-value">${item.quantity}</span>
+              <button class="qty-btn" onclick="updateQty('${item._id}', ${item.quantity + 1})">+</button>
+            </div>
+            <div style="min-width: 80px; text-align: right;">
+              <div class="price">${formatPrice(item.price * item.quantity)}</div>
+            </div>
+            <button class="btn btn-icon btn-danger btn-sm" onclick="removeItem('${item._id}')" title="Remove" style="width: 32px; height: 32px; font-size: 0.8rem;">✕</button>
+          </div>
+        `).join('');
+
+        updateSummary();
+      } catch (err) {
+        showToast('Failed to load cart', 'error');
+      }
+    }
+
+    function updateSummary() {
+      if (!cartData || !cartData.items) return;
+      const subtotal = cartData.totalPrice || cartData.items.reduce((s, i) => s + i.price * i.quantity, 0);
+      const tax = Math.round(subtotal * 0.05);
+      const total = subtotal + tax + deliveryCharge - discountValue;
+
+      document.getElementById('subtotal').textContent = formatPrice(subtotal);
+      document.getElementById('tax').textContent = formatPrice(tax);
+      document.getElementById('delivery-charge').textContent = formatPrice(deliveryCharge);
+      document.getElementById('total-price').textContent = formatPrice(total);
+    }
+
+    async function updateQty(itemId, qty) {
+      try {
+        if (qty <= 0) {
+          await removeItem(itemId);
+          return;
+        }
+        await api.put(`/cart/${itemId}`, { quantity: qty });
+        loadCart();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function removeItem(itemId) {
+      try {
+        await api.delete(`/cart/${itemId}`);
+        showToast('Item removed', 'info');
+        loadCart();
+        updateCartBadge();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function clearCart() {
+      if (!confirm('Clear all items from cart?')) return;
+      try {
+        await api.delete('/cart');
+        showToast('Cart cleared', 'info');
+        loadCart();
+        updateCartBadge();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function applyCoupon() {
+      const code = document.getElementById('coupon-code').value.trim();
+      if (!code) return showToast('Enter a coupon code', 'warning');
+      const subtotal = cartData.totalPrice || 0;
+
+      try {
+        const data = await api.post('/coupons/apply', { code, orderTotal: subtotal });
+        discountValue = data.data.discount;
+        appliedCoupon = data.data.code;
+        document.getElementById('coupon-result').style.display = 'block';
+        document.getElementById('discount-amount').textContent = `-${formatPrice(discountValue)}`;
+        showToast(`Coupon applied! Save ${formatPrice(discountValue)} 🎉`, 'success');
+        updateSummary();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function loadCoupons() {
+      try {
+        const data = await api.get('/coupons');
+        document.getElementById('available-coupons').innerHTML = data.data.map(c => `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+            <div>
+              <span class="badge-tag badge-discount" style="cursor: pointer;" onclick="document.getElementById('coupon-code').value='${c.code}'">${c.code}</span>
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">${c.description}</div>
+            </div>
+          </div>
+        `).join('');
+      } catch {}
+    }
+
+    function goToCheckout() {
+      if (!cartData || !cartData.items || cartData.items.length === 0) {
+        return showToast('Cart is empty', 'warning');
+      }
+      // Store checkout data
+      const subtotal = cartData.totalPrice;
+      const tax = Math.round(subtotal * 0.05);
+      const total = subtotal + tax + deliveryCharge - discountValue;
+      sessionStorage.setItem('checkout', JSON.stringify({
+        subtotal, tax, deliveryCharge, discount: discountValue, total, couponCode: appliedCoupon,
+      }));
+      window.location.href = '/checkout.html';
+    }
+
+    loadCart();
+    loadCoupons();
+  </script>
+  <style>
+    @media (max-width: 768px) {
+      #cart-layout { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</body>
+</html>

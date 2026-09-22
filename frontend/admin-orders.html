@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Orders — AnnSeva Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h1 class="section-title">Manage Orders 📦</h1>
+          <div class="flex gap-2 mt-2">
+            <a href="/admin.html" class="btn btn-secondary btn-sm">← Dashboard</a>
+            <a href="/admin-restaurants.html" class="btn btn-secondary btn-sm">🏪 Restaurants</a>
+            <a href="/admin-users.html" class="btn btn-secondary btn-sm">👥 Users</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Filter -->
+      <div class="tabs mb-3">
+        <button class="tab active" onclick="filterAdminOrders('', this)">All</button>
+        <button class="tab" onclick="filterAdminOrders('placed', this)">📋 Placed</button>
+        <button class="tab" onclick="filterAdminOrders('confirmed', this)">✅ Confirmed</button>
+        <button class="tab" onclick="filterAdminOrders('preparing', this)">👨‍🍳 Preparing</button>
+        <button class="tab" onclick="filterAdminOrders('out_for_delivery', this)">🛵 Out for Delivery</button>
+        <button class="tab" onclick="filterAdminOrders('delivered', this)">🎉 Delivered</button>
+        <button class="tab" onclick="filterAdminOrders('cancelled', this)">❌ Cancelled</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Order ID</th><th>Customer</th><th>Restaurant</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="admin-orders-table"></tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between mt-3" id="admin-orders-pagination" style="display: none;">
+        <button class="btn btn-secondary btn-sm" onclick="changeAdminOrderPage(-1)">← Prev</button>
+        <span class="text-muted" id="admin-orders-pinfo"></span>
+        <button class="btn btn-secondary btn-sm" onclick="changeAdminOrderPage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+    const user = api.getUser();
+    if (user && user.role !== 'admin' && user.role !== 'restaurant') {
+      showToast('Access denied', 'error');
+      window.location.href = '/index.html';
+    }
+    if (user && user.role === 'restaurant') {
+      const usersLink = document.querySelector('a[href="/admin-users.html"]');
+      if (usersLink) usersLink.style.display = 'none';
+      
+      const restLink = document.querySelector('a[href="/admin-restaurants.html"]');
+      if (restLink) restLink.textContent = '🏪 My Restaurant';
+    }
+
+    let adminOrderStatus = '';
+    let adminOrderPage = 1;
+
+    async function loadAdminOrders() {
+      try {
+        let url = `/orders/admin/all?page=${adminOrderPage}&limit=20`;
+        if (adminOrderStatus) url += `&status=${adminOrderStatus}`;
+
+        const data = await api.get(url);
+        const el = document.getElementById('admin-orders-table');
+
+        if (data.data.length === 0) {
+          el.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;">No orders found</td></tr>';
+          document.getElementById('admin-orders-pagination').style.display = 'none';
+          return;
+        }
+
+        el.innerHTML = data.data.map(o => `
+          <tr>
+            <td><a href="/order-tracking.html?id=${o._id}" style="font-weight: 700;">#${o._id.slice(-8).toUpperCase()}</a></td>
+            <td>${o.user?.name || 'N/A'}<br><span class="text-muted" style="font-size:0.75rem;">${o.user?.email || ''}</span></td>
+            <td>${o.restaurant?.name || 'N/A'}</td>
+            <td>${o.items.length} items</td>
+            <td class="price">${formatPrice(o.totalPrice)}</td>
+            <td>
+              <span class="status-badge ${getStatusColor(o.paymentStatus)}">${o.paymentMethod === 'cod' ? 'COD' : o.paymentStatus}</span>
+            </td>
+            <td>
+              <select class="form-input" style="width: auto; padding: 6px 10px; font-size: 0.8rem;"
+                onchange="updateAdminOrderStatus('${o._id}', this.value)"
+                ${o.status === 'delivered' || o.status === 'cancelled' ? 'disabled' : ''}>
+                <option value="placed" ${o.status === 'placed' ? 'selected' : ''}>📋 Placed</option>
+                <option value="confirmed" ${o.status === 'confirmed' ? 'selected' : ''}>✅ Confirmed</option>
+                <option value="preparing" ${o.status === 'preparing' ? 'selected' : ''}>👨‍🍳 Preparing</option>
+                <option value="out_for_delivery" ${o.status === 'out_for_delivery' ? 'selected' : ''}>🛵 Out for Delivery</option>
+                <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>🎉 Delivered</option>
+                <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>❌ Cancelled</option>
+              </select>
+            </td>
+            <td>
+              <a href="/order-tracking.html?id=${o._id}" class="btn btn-secondary btn-sm">📍</a>
+            </td>
+          </tr>
+        `).join('');
+
+        const pg = data.pagination;
+        const pgEl = document.getElementById('admin-orders-pagination');
+        if (pg.pages > 1) {
+          pgEl.style.display = 'flex';
+          document.getElementById('admin-orders-pinfo').textContent = `Page ${pg.page} of ${pg.pages} (${pg.total} orders)`;
+        } else { pgEl.style.display = 'none'; }
+
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function filterAdminOrders(status, el) {
+      adminOrderStatus = status;
+      adminOrderPage = 1;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      loadAdminOrders();
+    }
+
+    function changeAdminOrderPage(dir) {
+      adminOrderPage += dir;
+      loadAdminOrders();
+    }
+
+    async function updateAdminOrderStatus(orderId, status) {
+      try {
+        await api.put(`/orders/${orderId}/status`, { status, note: `Updated by admin` });
+        showToast(`Order updated to: ${status.replace(/_/g, ' ')}`, 'success');
+      } catch (err) { showToast(err.message, 'error'); loadAdminOrders(); }
+    }
+
+    loadAdminOrders();
+  </script>
+</body>
+</html>

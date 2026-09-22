@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout — AnnSeva</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <h1 class="section-title fade-in">Checkout 📦</h1>
+      <p class="section-subtitle mb-3 fade-in">Almost there! Complete your order</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 380px; gap: 32px;" id="checkout-layout">
+        <div>
+          <!-- Delivery Address -->
+          <div class="glass-card mb-3 fade-in">
+            <h3 class="mb-2">📍 Delivery Address</h3>
+            <div id="address-list">
+              <div class="loader"><div class="spinner spinner-sm"></div></div>
+            </div>
+            <button class="btn btn-secondary btn-sm mt-2" onclick="showAddressForm()">+ Add New Address</button>
+            
+            <div id="address-form" style="display: none;" class="mt-3">
+              <div class="grid grid-2">
+                <div class="form-group">
+                  <label class="form-label">Label</label>
+                  <select class="form-input" id="addr-label">
+                    <option value="Home">🏠 Home</option>
+                    <option value="Work">🏢 Work</option>
+                    <option value="Other">📍 Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Phone</label>
+                  <input type="tel" class="form-input" id="addr-phone" placeholder="9876543210" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Street Address</label>
+                <input type="text" class="form-input" id="addr-street" placeholder="123 MG Road" required>
+              </div>
+              <div class="grid grid-3">
+                <div class="form-group">
+                  <label class="form-label">City</label>
+                  <input type="text" class="form-input" id="addr-city" placeholder="Pune" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">State</label>
+                  <input type="text" class="form-input" id="addr-state" placeholder="Maharashtra" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Pincode</label>
+                  <input type="text" class="form-input" id="addr-pincode" placeholder="411001" required>
+                </div>
+              </div>
+              <button class="btn btn-success btn-sm" onclick="saveAddress()">Save Address</button>
+            </div>
+          </div>
+
+          <!-- Schedule for Later -->
+          <div class="glass-card mb-3 fade-in stagger-1">
+            <h3 class="mb-2">🕒 Delivery Time</h3>
+            <div class="schedule-toggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="schedule-toggle" onchange="toggleSchedule()">
+                <span class="toggle-slider"></span>
+              </label>
+              <span id="schedule-label" style="font-weight: 600;">Deliver Now ⚡</span>
+            </div>
+            <div id="schedule-picker" style="display: none; margin-top: 16px;">
+              <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">Choose when you'd like your order delivered (at least 1 hour from now)</p>
+              <div class="grid grid-2">
+                <div class="form-group">
+                  <label class="form-label">Date</label>
+                  <input type="date" class="form-input" id="schedule-date" onchange="validateSchedule()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Time</label>
+                  <input type="time" class="form-input" id="schedule-time" onchange="validateSchedule()">
+                </div>
+              </div>
+              <div id="schedule-feedback" style="display: none; padding: 10px 16px; border-radius: var(--radius-md); font-size: 0.85rem; margin-top: 8px;"></div>
+            </div>
+          </div>
+
+          <!-- Payment Method -->
+          <div class="glass-card fade-in stagger-1">
+            <h3 class="mb-2">💳 Payment Method</h3>
+            <div class="flex flex-col gap-2" style="gap: 12px;">
+              <label class="filter-checkbox" style="padding: 16px; background: var(--bg-glass); border-radius: var(--radius-md); border: 2px solid var(--border-color); cursor: pointer;" id="pay-razorpay-label">
+                <input type="radio" name="payment" value="razorpay" checked onchange="selectPayment('razorpay')" style="display:none;">
+                <div>
+                  <div style="font-weight: 700;">💳 Pay Online (Razorpay)</div>
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">Cards, UPI, Netbanking, Wallets</div>
+                </div>
+              </label>
+              <label class="filter-checkbox" style="padding: 16px; background: var(--bg-glass); border-radius: var(--radius-md); border: 2px solid var(--border-color); cursor: pointer;" id="pay-cod-label">
+                <input type="radio" name="payment" value="cod" onchange="selectPayment('cod')" style="display:none;">
+                <div>
+                  <div style="font-weight: 700;">💵 Cash on Delivery</div>
+                  <div style="font-size: 0.8rem; color: var(--text-muted);">Pay when your food arrives</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Order Summary -->
+        <div>
+          <div class="summary-box fade-in stagger-2">
+            <h3 style="margin-bottom: 16px;">Order Summary</h3>
+            <div class="summary-row"><span>Subtotal</span><span id="s-subtotal">₹0</span></div>
+            <div class="summary-row"><span>GST (5%)</span><span id="s-tax">₹0</span></div>
+            <div class="summary-row"><span>Delivery</span><span id="s-delivery">₹40</span></div>
+            <div id="s-discount-row" style="display:none;" class="summary-row text-green">
+              <span>Discount</span><span id="s-discount">-₹0</span>
+            </div>
+            <div class="summary-row total"><span>Total</span><span id="s-total">₹0</span></div>
+
+            <button class="btn btn-primary btn-block btn-lg mt-3" id="place-order-btn" onclick="placeOrder()">
+              🚀 Place Order
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+
+    let selectedAddress = null;
+    let paymentMethod = 'razorpay';
+    let checkoutData = {};
+    let isScheduled = false;
+    let scheduledFor = null;
+
+    // Load checkout data from session
+    try {
+      checkoutData = JSON.parse(sessionStorage.getItem('checkout') || '{}');
+    } catch { window.location.href = '/cart.html'; }
+
+    // Populate summary
+    function populateSummary() {
+      document.getElementById('s-subtotal').textContent = formatPrice(checkoutData.subtotal || 0);
+      document.getElementById('s-tax').textContent = formatPrice(checkoutData.tax || 0);
+      document.getElementById('s-delivery').textContent = formatPrice(checkoutData.deliveryCharge || 40);
+      document.getElementById('s-total').textContent = formatPrice(checkoutData.total || 0);
+      if (checkoutData.discount > 0) {
+        document.getElementById('s-discount-row').style.display = 'flex';
+        document.getElementById('s-discount').textContent = `-${formatPrice(checkoutData.discount)}`;
+      }
+    }
+    populateSummary();
+
+    // Load addresses
+    async function loadAddresses() {
+      try {
+        const user = await auth.getProfile();
+        const el = document.getElementById('address-list');
+
+        if (!user.addresses || user.addresses.length === 0) {
+          el.innerHTML = '<p class="text-muted">No saved addresses. Add one below.</p>';
+          return;
+        }
+
+        el.innerHTML = user.addresses.map((a, i) => `
+          <label class="filter-checkbox" style="padding: 14px; background: var(--bg-glass); border-radius: var(--radius-md); border: 2px solid ${selectedAddress && selectedAddress._id === a._id ? 'var(--accent-orange)' : 'var(--border-color)'}; margin-bottom: 8px; cursor: pointer; display: block;" onclick="selectAddress(${JSON.stringify(a).replace(/"/g, '&quot;')})">
+            <div class="flex items-center gap-2">
+              <input type="radio" name="address" ${i === 0 && !selectedAddress ? 'checked' : ''} ${selectedAddress && selectedAddress._id === a._id ? 'checked' : ''} style="display: none;">
+              <div>
+                <div style="font-weight: 700;">${a.label} ${a.isDefault ? '⭐' : ''}</div>
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">${a.street}, ${a.city}, ${a.state} - ${a.pincode}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">📞 ${a.phone}</div>
+              </div>
+            </div>
+          </label>
+        `).join('');
+
+        if (!selectedAddress && user.addresses.length > 0) {
+          selectedAddress = user.addresses[0];
+        }
+      } catch {}
+    }
+
+    function selectAddress(addr) {
+      selectedAddress = addr;
+      loadAddresses();
+    }
+
+    function selectPayment(method) {
+      paymentMethod = method;
+      document.getElementById('pay-razorpay-label').style.borderColor = method === 'razorpay' ? 'var(--accent-orange)' : 'var(--border-color)';
+      document.getElementById('pay-cod-label').style.borderColor = method === 'cod' ? 'var(--accent-orange)' : 'var(--border-color)';
+    }
+    selectPayment('razorpay');
+
+    function showAddressForm() {
+      document.getElementById('address-form').style.display = document.getElementById('address-form').style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function saveAddress() {
+      try {
+        await api.post('/users/address', {
+          label: document.getElementById('addr-label').value,
+          phone: document.getElementById('addr-phone').value,
+          street: document.getElementById('addr-street').value,
+          city: document.getElementById('addr-city').value,
+          state: document.getElementById('addr-state').value,
+          pincode: document.getElementById('addr-pincode').value,
+        });
+        showToast('Address saved! ✅', 'success');
+        document.getElementById('address-form').style.display = 'none';
+        loadAddresses();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // Place Order
+    async function placeOrder() {
+      if (!selectedAddress) {
+        return showToast('Please select a delivery address', 'warning');
+      }
+
+      const btn = document.getElementById('place-order-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner spinner-sm"></div> Placing order...';
+
+      try {
+        // Create order
+        const orderPayload = {
+          deliveryAddress: selectedAddress,
+          paymentMethod,
+          couponCode: checkoutData.couponCode || '',
+          discount: checkoutData.discount || 0,
+        };
+
+        // Add scheduling data if scheduled
+        if (isScheduled && scheduledFor) {
+          orderPayload.isScheduled = true;
+          orderPayload.scheduledFor = scheduledFor.toISOString();
+        }
+
+        const orderData = await api.post('/orders', orderPayload);
+
+        const order = orderData.data;
+
+        if (paymentMethod === 'razorpay') {
+          // Initiate Razorpay payment
+          const payData = await api.post('/payment/create-order', { orderId: order._id });
+          
+          // Handle demo mode (Razorpay not configured)
+          if (payData.data.demo) {
+            showToast('Payment successful (Demo Mode) 🎉', 'success');
+            sessionStorage.removeItem('checkout');
+            setTimeout(() => {
+              window.location.href = `/order-tracking.html?id=${order._id}`;
+            }, 1000);
+            return;
+          }
+
+          const options = {
+            key: payData.data.keyId,
+            amount: payData.data.amount,
+            currency: payData.data.currency,
+            name: 'AnnSeva',
+            description: `Order #${order._id.slice(-8).toUpperCase()}`,
+            order_id: payData.data.razorpayOrderId,
+            handler: async function (response) {
+              try {
+                await api.post('/payment/verify', {
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                  orderId: order._id,
+                });
+                showToast('Payment successful! 🎉', 'success');
+                sessionStorage.removeItem('checkout');
+                window.location.href = `/order-tracking.html?id=${order._id}`;
+              } catch (err) {
+                showToast('Payment verification failed: ' + err.message, 'error');
+                window.location.href = `/order-tracking.html?id=${order._id}`;
+              }
+            },
+            prefill: {
+              name: api.getUser()?.name || '',
+              email: api.getUser()?.email || '',
+              contact: selectedAddress.phone || '',
+            },
+            theme: { color: '#ff6b35' },
+            modal: {
+              ondismiss: function () {
+                showToast('Payment cancelled. Your order is saved.', 'warning');
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Place Order';
+              },
+            },
+          };
+
+          const rzp = new Razorpay(options);
+          rzp.on('payment.failed', function (response) {
+            showToast('Payment failed: ' + (response.error?.description || 'Please try again'), 'error');
+            btn.disabled = false;
+            btn.innerHTML = '🚀 Place Order';
+          });
+          rzp.open();
+        } else {
+          // COD
+          showToast('Order placed! Cash on Delivery 💵', 'success');
+          sessionStorage.removeItem('checkout');
+          window.location.href = `/order-tracking.html?id=${order._id}`;
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '🚀 Place Order';
+      }
+    }
+
+    loadAddresses();
+
+    // ===== SCHEDULE FUNCTIONS =====
+    function toggleSchedule() {
+      const checked = document.getElementById('schedule-toggle').checked;
+      const picker = document.getElementById('schedule-picker');
+      const label = document.getElementById('schedule-label');
+
+      if (checked) {
+        picker.style.display = 'block';
+        label.innerHTML = 'Schedule for Later 📅';
+        // Set min date to today
+        const today = new Date();
+        document.getElementById('schedule-date').min = today.toISOString().split('T')[0];
+        document.getElementById('schedule-date').value = today.toISOString().split('T')[0];
+        // Set default time to 2 hours from now
+        const defaultTime = new Date(Date.now() + 2 * 60 * 60 * 1000);
+        document.getElementById('schedule-time').value = defaultTime.toTimeString().slice(0, 5);
+        validateSchedule();
+      } else {
+        picker.style.display = 'none';
+        label.innerHTML = 'Deliver Now ⚡';
+        isScheduled = false;
+        scheduledFor = null;
+      }
+    }
+
+    function validateSchedule() {
+      const dateVal = document.getElementById('schedule-date').value;
+      const timeVal = document.getElementById('schedule-time').value;
+      const feedback = document.getElementById('schedule-feedback');
+
+      if (!dateVal || !timeVal) {
+        isScheduled = false;
+        scheduledFor = null;
+        feedback.style.display = 'none';
+        return;
+      }
+
+      const scheduled = new Date(`${dateVal}T${timeVal}`);
+      const minTime = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+      const maxTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+      feedback.style.display = 'block';
+
+      if (scheduled < minTime) {
+        feedback.style.background = 'rgba(239, 68, 68, 0.1)';
+        feedback.style.color = 'var(--accent-red)';
+        feedback.textContent = '⚠️ Please select a time at least 1 hour from now';
+        isScheduled = false;
+        scheduledFor = null;
+        return;
+      }
+
+      if (scheduled > maxTime) {
+        feedback.style.background = 'rgba(239, 68, 68, 0.1)';
+        feedback.style.color = 'var(--accent-red)';
+        feedback.textContent = '⚠️ Orders can only be scheduled up to 7 days in advance';
+        isScheduled = false;
+        scheduledFor = null;
+        return;
+      }
+
+      // Valid!
+      feedback.style.background = 'rgba(0, 214, 143, 0.1)';
+      feedback.style.color = 'var(--accent-green)';
+      feedback.textContent = `✅ Your order will be delivered on ${scheduled.toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`;
+      isScheduled = true;
+      scheduledFor = scheduled;
+    }
+  </script>
+  <style>
+    @media (max-width: 768px) {
+      #checkout-layout { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</body>
+</html>

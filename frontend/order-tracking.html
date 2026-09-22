@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Tracking — AnnSeva</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <h1 class="section-title fade-in">Order Tracking 🚚</h1>
+      <p class="section-subtitle mb-3 fade-in" id="order-id-text">Loading...</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 400px; gap: 32px;" id="tracking-layout">
+        <!-- Left: Map + Status -->
+        <div>
+          <!-- Status Tracker -->
+          <div class="glass-card mb-3 fade-in" id="status-card">
+            <div class="tracker-steps" id="tracker-steps">
+              <div class="tracker-progress" id="tracker-progress" style="width: 0%;"></div>
+              <div class="tracker-step" data-status="placed">
+                <div class="tracker-icon">📋</div>
+                <div class="tracker-label">Placed</div>
+              </div>
+              <div class="tracker-step" data-status="confirmed">
+                <div class="tracker-icon">✅</div>
+                <div class="tracker-label">Confirmed</div>
+              </div>
+              <div class="tracker-step" data-status="preparing">
+                <div class="tracker-icon">👨‍🍳</div>
+                <div class="tracker-label">Preparing</div>
+              </div>
+              <div class="tracker-step" data-status="out_for_delivery">
+                <div class="tracker-icon">🛵</div>
+                <div class="tracker-label">On the way</div>
+              </div>
+              <div class="tracker-step" data-status="delivered">
+                <div class="tracker-icon">🎉</div>
+                <div class="tracker-label">Delivered</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Map -->
+          <div class="glass-card fade-in stagger-1" style="padding: 0; overflow: hidden;">
+            <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color);">
+              <h3 style="font-size: 1rem;">📍 Live Delivery Map</h3>
+              <p class="text-muted" style="font-size: 0.8rem;">Watch your delivery in real-time</p>
+            </div>
+            <div id="tracking-map" class="tracking-map"></div>
+          </div>
+
+          <!-- Status History -->
+          <div class="glass-card mt-3 fade-in stagger-2" id="status-history">
+            <h3 class="mb-2" style="font-size: 1rem;">📜 Status History</h3>
+            <div id="history-list"></div>
+          </div>
+        </div>
+
+        <!-- Right: Order Details -->
+        <div>
+          <div class="summary-box fade-in stagger-1" id="order-details">
+            <div class="loader"><div class="spinner spinner-sm"></div></div>
+          </div>
+
+          <!-- Admin Controls (if admin/restaurant) -->
+          <div id="admin-controls" class="glass-card mt-3 fade-in stagger-2" style="display: none;">
+            <h3 class="mb-2" style="font-size: 1rem;">🔧 Update Status</h3>
+            <select class="form-input mb-2" id="status-update-select">
+              <option value="confirmed">✅ Confirmed</option>
+              <option value="preparing">👨‍🍳 Preparing</option>
+              <option value="out_for_delivery">🛵 Out for Delivery</option>
+              <option value="delivered">🎉 Delivered</option>
+              <option value="cancelled">❌ Cancelled</option>
+            </select>
+            <input class="form-input mb-2" id="status-note" placeholder="Add a note (optional)">
+            <button class="btn btn-success btn-block" onclick="updateStatus()">Update Status</button>
+            
+            <div class="mt-3" id="simulate-section">
+              <h4 class="mb-1" style="font-size: 0.85rem; color: var(--text-secondary);">🧪 Simulate Delivery</h4>
+              <button class="btn btn-secondary btn-sm btn-block" onclick="simulateDelivery()">Start Simulation</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+
+    const orderId = new URLSearchParams(window.location.search).get('id');
+    let order = null;
+    let map = null;
+    let deliveryMarker = null;
+    let restaurantMarker = null;
+    let socket = null;
+
+    const statusOrder = ['placed', 'confirmed', 'preparing', 'out_for_delivery', 'delivered'];
+
+    // Initialize map
+    function initMap() {
+      map = L.map('tracking-map').setView([18.5204, 73.8567], 13); // Pune center
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Restaurant marker
+      const restIcon = L.divIcon({
+        html: '<div style="font-size: 1.8rem; text-align: center;">🏪</div>',
+        iconSize: [40, 40],
+        className: '',
+      });
+      restaurantMarker = L.marker([18.5204, 73.8567], { icon: restIcon }).addTo(map);
+      restaurantMarker.bindPopup('<strong>Restaurant</strong>');
+
+      // Delivery person marker
+      const bikeIcon = L.divIcon({
+        html: '<div style="font-size: 2rem; text-align: center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">🛵</div>',
+        iconSize: [40, 40],
+        className: '',
+      });
+      deliveryMarker = L.marker([18.5204, 73.8567], { icon: bikeIcon }).addTo(map);
+      deliveryMarker.bindPopup('<strong>Delivery Partner</strong>');
+
+      // Customer marker
+      const homeIcon = L.divIcon({
+        html: '<div style="font-size: 1.8rem; text-align: center;">🏠</div>',
+        iconSize: [40, 40],
+        className: '',
+      });
+      L.marker([18.5304, 73.8467], { icon: homeIcon }).addTo(map).bindPopup('<strong>Your Location</strong>');
+    }
+
+    // Connect Socket.io
+    function connectSocket() {
+      const token = localStorage.getItem('token');
+      socket = io({
+        auth: { token },
+        transports: ['websocket', 'polling'],
+      });
+
+      socket.on('connect', () => {
+        console.log('🔌 Socket connected');
+        socket.emit('joinOrder', orderId);
+      });
+
+      socket.on('orderStatusUpdate', (data) => {
+        console.log('📦 Status update:', data);
+        if (data.orderId === orderId) {
+          updateTrackerUI(data.status);
+          if (data.statusHistory) updateHistoryUI(data.statusHistory);
+          showToast(`Order status: ${data.status.replace(/_/g, ' ')}`, 'info');
+        }
+      });
+
+      socket.on('locationUpdate', (data) => {
+        if (data.orderId === orderId && deliveryMarker) {
+          deliveryMarker.setLatLng([data.lat, data.lng]);
+          map.panTo([data.lat, data.lng]);
+        }
+      });
+
+      socket.on('paymentVerified', (data) => {
+        if (data.orderId === orderId) {
+          showToast('Payment verified! ✅', 'success');
+          loadOrder();
+        }
+      });
+    }
+
+    // Load order details
+    async function loadOrder() {
+      try {
+        const data = await api.get(`/orders/${orderId}`);
+        order = data.data;
+
+        document.getElementById('order-id-text').textContent = `Order #${order._id.slice(-8).toUpperCase()}`;
+        document.title = `Tracking #${order._id.slice(-8).toUpperCase()} — AnnSeva`;
+
+        // Update tracker
+        updateTrackerUI(order.status);
+
+        // Update history
+        if (order.statusHistory) updateHistoryUI(order.statusHistory);
+
+        // Update delivery marker if location exists
+        if (order.deliveryLocation && order.deliveryLocation.lat) {
+          deliveryMarker?.setLatLng([order.deliveryLocation.lat, order.deliveryLocation.lng]);
+        }
+
+        // Order details panel
+        document.getElementById('order-details').innerHTML = `
+          <h3 style="margin-bottom: 16px;">Order Details</h3>
+          <div class="mb-2">
+            <span class="status-badge ${getStatusColor(order.status)}">${order.status.replace(/_/g, ' ')}</span>
+            <span class="status-badge ${getStatusColor(order.paymentStatus)}" style="margin-left: 4px;">${order.paymentMethod === 'cod' ? 'COD' : order.paymentStatus}</span>
+          </div>
+          
+          ${order.restaurant ? `
+            <div class="flex items-center gap-2 mb-3" style="padding: 12px; background: var(--bg-glass); border-radius: var(--radius-md);">
+              <div style="font-size: 1.5rem;">🏪</div>
+              <div>
+                <div style="font-weight: 600;">${order.restaurant.name || 'Restaurant'}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted);">${order.estimatedDelivery || '30-45 min'}</div>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="mb-2">
+            ${order.items.map(i => `
+              <div class="flex justify-between" style="padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 0.9rem;">
+                <span>${i.name} × ${i.quantity}</span>
+                <span>${formatPrice(i.price * i.quantity)}</span>
+              </div>
+            `).join('')}
+          </div>
+          
+          <hr class="summary-divider">
+          <div class="summary-row"><span>Subtotal</span><span>${formatPrice(order.itemsPrice)}</span></div>
+          <div class="summary-row"><span>Tax</span><span>${formatPrice(order.taxPrice)}</span></div>
+          <div class="summary-row"><span>Delivery</span><span>${formatPrice(order.deliveryCharge)}</span></div>
+          ${order.discount > 0 ? `<div class="summary-row text-green"><span>Discount</span><span>-${formatPrice(order.discount)}</span></div>` : ''}
+          <div class="summary-row total"><span>Total</span><span>${formatPrice(order.totalPrice)}</span></div>
+          
+          ${order.deliveryAddress ? `
+            <div class="mt-3" style="padding: 12px; background: var(--bg-glass); border-radius: var(--radius-md);">
+              <div style="font-weight: 600; font-size: 0.85rem;">📍 Delivery Address</div>
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">${order.deliveryAddress.street}, ${order.deliveryAddress.city} - ${order.deliveryAddress.pincode}</div>
+            </div>
+          ` : ''}
+
+          <div class="text-muted mt-2" style="font-size: 0.8rem;">
+            Ordered: ${new Date(order.createdAt).toLocaleString()}
+          </div>
+        `;
+
+        // Show admin controls if admin/restaurant
+        const user = api.getUser();
+        if (user && (user.role === 'admin' || user.role === 'restaurant')) {
+          document.getElementById('admin-controls').style.display = 'block';
+        }
+      } catch (err) {
+        showToast('Failed to load order', 'error');
+        document.getElementById('order-details').innerHTML = '<div class="empty-state"><h3>Order not found</h3></div>';
+      }
+    }
+
+    function updateTrackerUI(status) {
+      const currentIdx = statusOrder.indexOf(status);
+      const steps = document.querySelectorAll('.tracker-step');
+      const progress = document.getElementById('tracker-progress');
+
+      steps.forEach((step, i) => {
+        step.classList.remove('completed', 'active');
+        if (i < currentIdx) step.classList.add('completed');
+        else if (i === currentIdx) step.classList.add('active');
+      });
+
+      if (status === 'cancelled') {
+        steps.forEach(s => s.classList.remove('completed', 'active'));
+        progress.style.width = '0%';
+        progress.style.background = 'var(--accent-red)';
+        return;
+      }
+
+      const percent = currentIdx >= 0 ? (currentIdx / (statusOrder.length - 1)) * 100 : 0;
+      progress.style.width = `calc(${percent}% - 20px)`;
+    }
+
+    function updateHistoryUI(history) {
+      const el = document.getElementById('history-list');
+      el.innerHTML = history.slice().reverse().map(h => `
+        <div class="flex items-center gap-2" style="padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+          <div class="status-badge ${getStatusColor(h.status)}" style="min-width: 120px; text-align: center;">${h.status.replace(/_/g, ' ')}</div>
+          <div style="flex: 1;">
+            <div style="font-size: 0.8rem; color: var(--text-muted);">${new Date(h.timestamp).toLocaleString()}</div>
+            ${h.note ? `<div style="font-size: 0.8rem; color: var(--text-secondary);">${h.note}</div>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function updateStatus() {
+      const status = document.getElementById('status-update-select').value;
+      const note = document.getElementById('status-note').value;
+      try {
+        await api.put(`/orders/${orderId}/status`, { status, note });
+        showToast(`Status updated to: ${status.replace(/_/g, ' ')}`, 'success');
+        document.getElementById('status-note').value = '';
+        loadOrder();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // Simulate delivery movement
+    function simulateDelivery() {
+      showToast('Simulating delivery route... 🛵', 'info');
+      
+      // Simulated route points around Pune
+      const route = [
+        [18.5204, 73.8567], [18.5220, 73.8550], [18.5240, 73.8530],
+        [18.5260, 73.8510], [18.5275, 73.8490], [18.5290, 73.8475],
+        [18.5304, 73.8467],
+      ];
+
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i >= route.length) {
+          clearInterval(interval);
+          showToast('Delivery simulation complete! 🎉', 'success');
+          return;
+        }
+
+        const [lat, lng] = route[i];
+        deliveryMarker.setLatLng([lat, lng]);
+        map.panTo([lat, lng], { animate: true, duration: 1 });
+
+        // Emit via socket
+        if (socket) {
+          socket.emit('updateDeliveryLocation', { orderId, lat, lng });
+        }
+
+        i++;
+      }, 2000);
+    }
+
+    // Init
+    if (orderId) {
+      initMap();
+      connectSocket();
+      loadOrder();
+    } else {
+      window.location.href = '/orders.html';
+    }
+  </script>
+  <style>
+    @media (max-width: 768px) {
+      #tracking-layout { grid-template-columns: 1fr !important; }
+    }
+    .leaflet-container { background: #1a1a2e; }
+  </style>
+</body>
+</html>

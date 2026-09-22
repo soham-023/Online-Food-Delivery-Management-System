@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Restaurants — AnnSeva Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h1 class="section-title fade-in">Manage Restaurants 🏪</h1>
+          <div class="flex gap-2 mt-2">
+            <a href="/admin.html" class="btn btn-secondary btn-sm">← Dashboard</a>
+            <a href="/admin-menu.html" class="btn btn-secondary btn-sm">🍕 Menu</a>
+            <a href="/admin-orders.html" class="btn btn-secondary btn-sm">📦 Orders</a>
+            <a href="/admin-users.html" class="btn btn-secondary btn-sm">👥 Users</a>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="showRestaurantModal()">+ Add Restaurant</button>
+      </div>
+
+      <div class="grid grid-3" id="admin-restaurants">
+        <div class="loader" style="grid-column:1/-1;"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Add/Edit Modal -->
+      <div class="modal-overlay" id="rest-modal" style="display: none;">
+        <div class="modal" style="max-width: 600px;">
+          <div class="modal-header">
+            <h3 class="modal-title" id="rest-modal-title">Add Restaurant</h3>
+            <button class="modal-close" onclick="closeRestModal()">✕</button>
+          </div>
+          <div class="modal-body">
+            <form id="rest-form">
+              <input type="hidden" id="rest-edit-id">
+              <div class="form-group"><label class="form-label">Name</label><input type="text" class="form-input" id="rest-name" required></div>
+              <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" id="rest-desc"></textarea></div>
+              <div class="grid grid-2">
+                <div class="form-group"><label class="form-label">Cuisine (comma separated)</label><input type="text" class="form-input" id="rest-cuisine" placeholder="North Indian, Chinese"></div>
+                <div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-input" id="rest-phone"></div>
+              </div>
+              <div class="grid grid-2">
+                <div class="form-group"><label class="form-label">Delivery Time</label><input type="text" class="form-input" id="rest-delivery-time" value="30-45 min"></div>
+                <div class="form-group"><label class="form-label">Delivery Charge (₹)</label><input type="number" class="form-input" id="rest-delivery-charge" value="40"></div>
+              </div>
+              <div class="form-group"><label class="form-label">Street</label><input type="text" class="form-input" id="rest-street"></div>
+              <div class="grid grid-3">
+                <div class="form-group"><label class="form-label">City</label><input type="text" class="form-input" id="rest-city" value="Pune"></div>
+                <div class="form-group"><label class="form-label">State</label><input type="text" class="form-input" id="rest-state" value="Maharashtra"></div>
+                <div class="form-group"><label class="form-label">Pincode</label><input type="text" class="form-input" id="rest-pincode"></div>
+              </div>
+              <div class="form-group"><label class="form-label">Image URL</label><input type="text" class="form-input" id="rest-image" placeholder="https://..."></div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeRestModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveRestaurant()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+    const user = api.getUser();
+    if (user && user.role !== 'admin' && user.role !== 'restaurant') {
+      showToast('Access denied', 'error');
+      window.location.href = '/index.html';
+    }
+    if (user && user.role === 'restaurant') {
+      const usersLink = document.querySelector('a[href="/admin-users.html"]');
+      if (usersLink) usersLink.style.display = 'none';
+      
+      const addBtn = document.querySelector('button[onclick="showRestaurantModal()"]');
+      if (addBtn && user.role === 'restaurant') {
+          // Restaurant owners can't create new restaurants, only edit their own
+          addBtn.style.display = 'none';
+      }
+    }
+
+    async function loadRestaurants() {
+      try {
+        const data = await api.get('/restaurants?limit=50');
+        const el = document.getElementById('admin-restaurants');
+
+        if (data.data.length === 0) {
+          el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><h3>No restaurants</h3><p>Add your first restaurant</p></div>';
+          return;
+        }
+
+        el.innerHTML = data.data.map(r => `
+          <div class="restaurant-card fade-in">
+            <div class="card-img-wrapper" style="height: 160px;"><img src="${r.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'}" class="card-img" style="height: 100%;" loading="lazy"></div>
+            <div class="card-body">
+              <h3 class="card-title">${r.name}</h3>
+              <div class="restaurant-meta"><span>⭐ ${r.rating}</span><span>${r.cuisine.join(', ')}</span></div>
+              <div class="flex gap-1 mt-2">
+                <button class="btn btn-secondary btn-sm" onclick='editRestaurant(${JSON.stringify(r)})'>✏️ Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteRestaurant('${r._id}')">🗑️</button>
+                <a href="/admin-menu.html?restaurant=${r._id}" class="btn btn-primary btn-sm">🍕 Menu</a>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function showRestaurantModal() {
+      document.getElementById('rest-modal').style.display = 'flex';
+      document.getElementById('rest-modal-title').textContent = 'Add Restaurant';
+      document.getElementById('rest-form').reset();
+      document.getElementById('rest-edit-id').value = '';
+    }
+
+    function closeRestModal() { document.getElementById('rest-modal').style.display = 'none'; }
+
+    function editRestaurant(r) {
+      document.getElementById('rest-modal').style.display = 'flex';
+      document.getElementById('rest-modal-title').textContent = 'Edit Restaurant';
+      document.getElementById('rest-edit-id').value = r._id;
+      document.getElementById('rest-name').value = r.name;
+      document.getElementById('rest-desc').value = r.description;
+      document.getElementById('rest-cuisine').value = r.cuisine.join(', ');
+      document.getElementById('rest-phone').value = r.phone;
+      document.getElementById('rest-delivery-time').value = r.deliveryTime;
+      document.getElementById('rest-delivery-charge').value = r.deliveryCharge;
+      document.getElementById('rest-street').value = r.address?.street || '';
+      document.getElementById('rest-city').value = r.address?.city || '';
+      document.getElementById('rest-state').value = r.address?.state || '';
+      document.getElementById('rest-pincode').value = r.address?.pincode || '';
+      document.getElementById('rest-image').value = r.image;
+    }
+
+    async function saveRestaurant() {
+      const id = document.getElementById('rest-edit-id').value;
+      const body = {
+        name: document.getElementById('rest-name').value,
+        description: document.getElementById('rest-desc').value,
+        cuisine: document.getElementById('rest-cuisine').value.split(',').map(s => s.trim()),
+        phone: document.getElementById('rest-phone').value,
+        deliveryTime: document.getElementById('rest-delivery-time').value,
+        deliveryCharge: Number(document.getElementById('rest-delivery-charge').value),
+        address: { street: document.getElementById('rest-street').value, city: document.getElementById('rest-city').value, state: document.getElementById('rest-state').value, pincode: document.getElementById('rest-pincode').value },
+        image: document.getElementById('rest-image').value,
+      };
+      try {
+        if (id) { await api.put(`/restaurants/${id}`, body); }
+        else { await api.post('/restaurants', body); }
+        showToast(id ? 'Restaurant updated!' : 'Restaurant created! 🏪', 'success');
+        closeRestModal();
+        loadRestaurants();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function deleteRestaurant(id) {
+      if (!confirm('Delete this restaurant?')) return;
+      try { await api.delete(`/restaurants/${id}`); showToast('Deleted', 'info'); loadRestaurants(); }
+      catch (err) { showToast(err.message, 'error'); }
+    }
+
+    loadRestaurants();
+  </script>
+</body>
+</html>

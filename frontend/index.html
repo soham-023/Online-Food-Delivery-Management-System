@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AnnSeva — अन्नसेवा | Your food service. Order from the best restaurants with live tracking, secure payments, and fast delivery.">
+  <title>AnnSeva — Delicious Food, Delivered Fast</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍛</text></svg>">
+</head>
+<body>
+  <div class="page-content">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container">
+        <h1 class="hero-title fade-in">
+          Delicious Food<br><span class="highlight">Delivered Fast</span> 🚀
+        </h1>
+        <p class="hero-subtitle fade-in stagger-1">
+          Order from the best restaurants in your city. Real-time tracking, secure payments, and blazing fast delivery.
+        </p>
+        <div class="hero-search fade-in stagger-2">
+          <input type="text" id="hero-search" placeholder="Search for restaurants or dishes..." onkeydown="if(event.key==='Enter') heroSearch()">
+          <button class="voice-search-btn" onclick="startVoiceSearch('hero-search')" title="Search by voice" id="voice-btn-hero" aria-label="Voice Search">🎤</button>
+          <button onclick="heroSearch()" aria-label="Search">🔍</button>
+        </div>
+        <div class="flex items-center justify-between" style="max-width: 500px; margin: 30px auto 0; gap: 30px; flex-wrap: wrap; justify-content: center;">
+          <div class="text-center fade-in stagger-2">
+            <div style="font-size: 2rem;">🏪</div>
+            <div style="font-weight: 700; font-size: 1.2rem;" id="stat-restaurants">50+</div>
+            <div class="text-muted" style="font-size: 0.8rem;">Restaurants</div>
+          </div>
+          <div class="text-center fade-in stagger-3">
+            <div style="font-size: 2rem;">🍕</div>
+            <div style="font-weight: 700; font-size: 1.2rem;" id="stat-dishes">500+</div>
+            <div class="text-muted" style="font-size: 0.8rem;">Dishes</div>
+          </div>
+          <div class="text-center fade-in stagger-3">
+            <div style="font-size: 2rem;">⭐</div>
+            <div style="font-weight: 700; font-size: 1.2rem;">4.5+</div>
+            <div class="text-muted" style="font-size: 0.8rem;">Avg Rating</div>
+          </div>
+          <div class="text-center fade-in stagger-4">
+            <div style="font-size: 2rem;">🚚</div>
+            <div style="font-weight: 700; font-size: 1.2rem;">30 min</div>
+            <div class="text-muted" style="font-size: 0.8rem;">Avg Delivery</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Categories -->
+    <section style="padding: 40px 0;">
+      <div class="container">
+        <div class="section-header fade-in">
+          <div>
+            <h2 class="section-title">What's on your mind? 🤔</h2>
+            <p class="section-subtitle">Browse by category</p>
+          </div>
+        </div>
+        <div class="category-scroll fade-in stagger-1" id="categories">
+          <div class="category-pill" onclick="goCategory('pizza')"><div class="cat-icon">🍕</div>Pizza</div>
+          <div class="category-pill" onclick="goCategory('burger')"><div class="cat-icon">🍔</div>Burgers</div>
+          <div class="category-pill" onclick="goCategory('biryani')"><div class="cat-icon">🍚</div>Biryani</div>
+          <div class="category-pill" onclick="goCategory('chinese')"><div class="cat-icon">🥡</div>Chinese</div>
+          <div class="category-pill" onclick="goCategory('south-indian')"><div class="cat-icon">🥘</div>South Indian</div>
+          <div class="category-pill" onclick="goCategory('north-indian')"><div class="cat-icon">🍛</div>North Indian</div>
+          <div class="category-pill" onclick="goCategory('desserts')"><div class="cat-icon">🍰</div>Desserts</div>
+          <div class="category-pill" onclick="goCategory('beverages')"><div class="cat-icon">🥤</div>Beverages</div>
+          <div class="category-pill" onclick="goCategory('snacks')"><div class="cat-icon">🍟</div>Snacks</div>
+          <div class="category-pill" onclick="goCategory('main-course')"><div class="cat-icon">🍽️</div>Main Course</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top Restaurants -->
+    <section style="padding: 40px 0;">
+      <div class="container">
+        <div class="section-header fade-in">
+          <div>
+            <h2 class="section-title">Top Restaurants 🏆</h2>
+            <p class="section-subtitle">Handpicked for you</p>
+          </div>
+          <a href="/restaurants.html" class="btn btn-secondary btn-sm">View All →</a>
+        </div>
+        <div class="grid grid-3 fade-in stagger-1" id="top-restaurants">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recommended for You (shown only for logged-in users) -->
+    <section style="padding: 40px 0; display: none;" id="recommendations-section">
+      <div class="container">
+        <div class="section-header fade-in">
+          <div>
+            <h2 class="section-title">🧠 Recommended for You</h2>
+            <p class="section-subtitle" id="rec-subtitle">Personalized picks based on your taste</p>
+          </div>
+          <div class="rec-meta" id="rec-meta"></div>
+        </div>
+
+        <!-- For You -->
+        <div id="rec-foryou-section" style="display: none;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 16px; color: var(--text-secondary);">🎯 Just for You</h3>
+          <div class="grid grid-3 mb-3" id="rec-foryou"></div>
+        </div>
+
+        <!-- Try Something New -->
+        <div id="rec-trynew-section" style="display: none;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 16px; color: var(--text-secondary);">✨ Try Something New</h3>
+          <div class="grid grid-2 mb-3" id="rec-trynew"></div>
+        </div>
+
+        <!-- Trending -->
+        <div id="rec-trending-section" style="display: none;">
+          <h3 style="font-size: 1.1rem; margin-bottom: 16px; color: var(--text-secondary);" id="rec-trending-title">🔥 Trending Now</h3>
+          <div class="grid grid-3" id="rec-trending"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Popular Dishes -->
+    <section style="padding: 40px 0;">
+      <div class="container">
+        <div class="section-header fade-in">
+          <div>
+            <h2 class="section-title">Popular Dishes 🔥</h2>
+            <p class="section-subtitle">Most ordered right now</p>
+          </div>
+        </div>
+        <div class="grid grid-2 fade-in stagger-1" id="popular-dishes">
+          <div class="loader"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Promo Section -->
+    <section style="padding: 40px 0;">
+      <div class="container">
+        <div class="glass-card" style="text-align: center; background: linear-gradient(135deg, rgba(255,107,53,0.1), rgba(124,92,252,0.1));">
+          <h2 style="font-size: 2rem; margin-bottom: 12px;">🎉 Special Offers</h2>
+          <p class="text-muted mb-3">Use these codes to save on your orders!</p>
+          <div class="flex items-center" style="gap: 16px; flex-wrap: wrap; justify-content: center;" id="promo-codes">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section style="padding: 60px 0;">
+      <div class="container">
+        <h2 class="section-title text-center mb-4">Why AnnSeva? ✨</h2>
+        <div class="grid grid-4">
+          <div class="glass-card text-center fade-in stagger-1">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">🚀</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Fast Delivery</h3>
+            <p class="text-muted" style="font-size: 0.85rem;">Average delivery in 30 minutes</p>
+          </div>
+          <div class="glass-card text-center fade-in stagger-2">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">📍</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Live Tracking</h3>
+            <p class="text-muted" style="font-size: 0.85rem;">Track your order in real-time on map</p>
+          </div>
+          <div class="glass-card text-center fade-in stagger-3">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">💳</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Secure Payments</h3>
+            <p class="text-muted" style="font-size: 0.85rem;">Razorpay powered secure checkout</p>
+          </div>
+          <div class="glass-card text-center fade-in stagger-4">
+            <div style="font-size: 2.5rem; margin-bottom: 12px;">⭐</div>
+            <h3 style="font-size: 1.1rem; margin-bottom: 8px;">Top Quality</h3>
+            <p class="text-muted" style="font-size: 0.85rem;">Only the best rated restaurants</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    // Load top restaurants
+    async function loadTopRestaurants() {
+      try {
+        const data = await api.get('/restaurants?sort=rating&limit=6');
+        const el = document.getElementById('top-restaurants');
+        if (data.data.length === 0) {
+          el.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No restaurants yet. Seed the database!</p></div>';
+          return;
+        }
+        el.innerHTML = data.data.map(r => `
+          <div class="restaurant-card" onclick="location.href='/restaurant.html?id=${r._id}'">
+            <div class="card-img-wrapper">
+              <img src="${r.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'}" alt="${r.name}" class="card-img" loading="lazy">
+              <button class="wishlist-btn" onclick="event.stopPropagation(); toggleWishlistRest('${r._id}', this)">♡</button>
+            </div>
+            <div class="card-body">
+              <h3 class="card-title">${r.name}</h3>
+              <div class="cuisine-tags">${r.cuisine.map(c => `<span class="cuisine-tag">${c}</span>`).join('')}</div>
+              <div class="restaurant-meta">
+                <span>⭐ ${r.rating}</span>
+                <span>🕐 ${r.deliveryTime}</span>
+                <span>💰 ${formatPrice(r.deliveryCharge)} delivery</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        document.getElementById('top-restaurants').innerHTML = '<p class="text-muted text-center" style="grid-column:1/-1;">Could not load restaurants. Make sure server is running.</p>';
+      }
+    }
+
+    // Load popular dishes
+    async function loadPopularDishes() {
+      try {
+        const data = await api.get('/menu/search?sort=rating&limit=6');
+        const el = document.getElementById('popular-dishes');
+        if (data.data.length === 0) {
+          el.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><p>No dishes yet</p></div>';
+          return;
+        }
+        el.innerHTML = data.data.map(item => `
+          <div class="food-card" onclick="location.href='/food.html?id=${item._id}'">
+            <img src="${item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500'}" alt="${item.name}" class="food-card-img" loading="lazy">
+            <div class="food-card-body">
+              <div class="flex items-center gap-1 mb-1">
+                <span class="badge-tag ${item.isVeg ? 'badge-veg' : 'badge-nonveg'}">${item.isVeg ? '🟢 VEG' : '🔴 NON-VEG'}</span>
+                <span class="badge-tag badge-rating">⭐ ${item.rating}</span>
+              </div>
+              <div class="food-card-name">${item.name}</div>
+              <div class="food-card-desc">${item.description}</div>
+              <div class="food-card-footer">
+                <span class="price">${formatPrice(item.price)}</span>
+                <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart('${item._id}')">+ Add</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch {}
+    }
+
+    // Load promo codes
+    async function loadPromos() {
+      try {
+        const data = await api.get('/coupons');
+        const el = document.getElementById('promo-codes');
+        el.innerHTML = data.data.map(c => `
+          <div class="glass-card" style="padding: 16px 24px; text-align: center;">
+            <div class="badge-tag badge-discount" style="font-size: 0.85rem; padding: 6px 16px; margin-bottom: 8px;">${c.code}</div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">${c.description}</div>
+          </div>
+        `).join('');
+      } catch {}
+    }
+
+    // Add to cart
+    async function addToCart(menuItemId) {
+      if (!auth.requireAuth()) return;
+      try {
+        await api.post('/cart', { menuItemId, quantity: 1 });
+        showToast('Added to cart! 🛒', 'success');
+        updateCartBadge();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    // Wishlist toggle for restaurant
+    async function toggleWishlistRest(id, btn) {
+      if (!auth.requireAuth()) return;
+      try {
+        const data = await api.post(`/wishlist/restaurant/${id}`);
+        btn.classList.toggle('active', data.added);
+        btn.innerHTML = data.added ? '♥' : '♡';
+        showToast(data.added ? 'Added to favorites! ❤️' : 'Removed from favorites', data.added ? 'success' : 'info');
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function heroSearch() {
+      const q = document.getElementById('hero-search').value.trim();
+      if (q) window.location.href = `/restaurants.html?search=${encodeURIComponent(q)}`;
+    }
+
+    function goCategory(cat) {
+      window.location.href = `/restaurants.html?category=${cat}`;
+    }
+
+    // Init
+    loadTopRestaurants();
+    loadPopularDishes();
+    loadPromos();
+    loadRecommendations();
+
+    // ===== SMART RECOMMENDATIONS =====
+    async function loadRecommendations() {
+      if (!api.isLoggedIn()) return;
+      try {
+        const data = await api.get('/recommendations');
+        const section = document.getElementById('recommendations-section');
+        const { forYou, tryNew, trending } = data.data;
+        const { isNewUser, timeLabel, preferredCategories } = data.meta;
+
+        // Show section
+        section.style.display = 'block';
+
+        // Update subtitle based on time
+        const timeEmoji = { breakfast: '🌅', lunch: '☀️', snack: '🍵', dinner: '🌙' };
+        document.getElementById('rec-subtitle').textContent = isNewUser 
+          ? `${timeEmoji[timeLabel] || '🍽️'} Here's what's popular for ${timeLabel}`
+          : `${timeEmoji[timeLabel] || '🍽️'} Based on your taste & perfect for ${timeLabel}`;
+
+        // Show preferred categories badge
+        if (preferredCategories.length > 0) {
+          document.getElementById('rec-meta').innerHTML = preferredCategories
+            .map(c => `<span class="rec-category-badge">${c}</span>`).join('');
+        }
+
+        // Render "For You" section
+        if (forYou.length > 0) {
+          document.getElementById('rec-foryou-section').style.display = 'block';
+          document.getElementById('rec-foryou').innerHTML = forYou.map(item => renderRecCard(item)).join('');
+        }
+
+        // Render "Try Something New" section
+        if (tryNew.length > 0) {
+          document.getElementById('rec-trynew-section').style.display = 'block';
+          document.getElementById('rec-trynew').innerHTML = tryNew.map(item => renderRecCard(item)).join('');
+        }
+
+        // Render "Trending" section
+        if (trending.length > 0) {
+          document.getElementById('rec-trending-section').style.display = 'block';
+          if (isNewUser) {
+            document.getElementById('rec-trending-title').textContent = `🔥 Popular for ${timeLabel}`;
+          }
+          document.getElementById('rec-trending').innerHTML = trending.map(item => renderRecCard(item)).join('');
+        }
+      } catch (err) {
+        // Silently fail — recommendations are optional
+        console.log('Recommendations not available:', err.message);
+      }
+    }
+
+    function renderRecCard(item) {
+      return `
+        <div class="food-card rec-card fade-in" onclick="location.href='/food.html?id=${item._id}'">
+          <img src="${item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500'}" alt="${item.name}" class="food-card-img" loading="lazy">
+          <div class="food-card-body">
+            <div class="flex items-center gap-1 mb-1">
+              <span class="badge-tag ${item.isVeg ? 'badge-veg' : 'badge-nonveg'}">${item.isVeg ? '🟢 VEG' : '🔴 NON-VEG'}</span>
+              <span class="badge-tag badge-rating">⭐ ${item.rating}</span>
+            </div>
+            <div class="food-card-name">${item.name}</div>
+            <div class="food-card-desc">${item.description || ''}</div>
+            ${item.restaurant ? `<div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">🏪 ${item.restaurant.name}</div>` : ''}
+            <div class="food-card-footer">
+              <span class="price">${formatPrice(item.price)}</span>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); addToCart('${item._id}')">+ Add</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ===== VOICE SEARCH =====
+    function startVoiceSearch(inputId) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        showToast('Voice search is not supported in your browser. Try Chrome or Edge.', 'warning');
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      const btn = document.getElementById('voice-btn-' + inputId.split('-').pop());
+      const input = document.getElementById(inputId);
+
+      // Visual feedback
+      btn.classList.add('voice-listening');
+      btn.innerHTML = '🔴';
+      showToast('🎤 Listening... Speak now!', 'info', 2000);
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        input.value = finalTranscript || interimTranscript;
+
+        if (finalTranscript) {
+          showToast(`🎤 Heard: "${finalTranscript}"`, 'success', 2000);
+          // Auto-search after getting final result
+          setTimeout(() => {
+            if (inputId === 'hero-search') {
+              heroSearch();
+            }
+          }, 500);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'no-speech') {
+          showToast('No speech detected. Please try again.', 'warning');
+        } else if (event.error === 'not-allowed') {
+          showToast('Microphone access denied. Please allow microphone access.', 'error');
+        } else {
+          showToast('Voice search error. Please try again.', 'error');
+        }
+        btn.classList.remove('voice-listening');
+        btn.innerHTML = '🎤';
+      };
+
+      recognition.onend = () => {
+        btn.classList.remove('voice-listening');
+        btn.innerHTML = '🎤';
+      };
+
+      recognition.start();
+    }
+  </script>
+</body>
+</html>

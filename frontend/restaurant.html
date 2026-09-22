@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant — AnnSeva</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <!-- Restaurant Header -->
+      <div id="rest-header" class="fade-in">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Menu Filter -->
+      <div class="flex gap-2 mb-3 mt-4" style="flex-wrap: wrap;" id="menu-filters" style="display:none;">
+        <div class="hero-search" style="flex: 1; min-width: 200px; max-width: 400px;">
+          <input type="text" id="menu-search" placeholder="Search menu..." oninput="debouncedMenuSearch()">
+          <button onclick="loadMenu()">🔍</button>
+        </div>
+        <select class="form-input" id="menu-sort" style="width: auto;" onchange="loadMenu()">
+          <option value="">Sort by</option>
+          <option value="price_low">Price: Low → High</option>
+          <option value="price_high">Price: High → Low</option>
+          <option value="rating">Rating</option>
+        </select>
+        <label class="filter-checkbox" style="padding: 10px 16px; background: var(--bg-glass); border-radius: var(--radius-full); border: 1px solid var(--border-color);">
+          <input type="checkbox" id="veg-only" onchange="loadMenu()">
+          🟢 Veg Only
+        </label>
+      </div>
+
+      <!-- Category Tabs -->
+      <div class="tabs" id="category-tabs"></div>
+
+      <!-- Menu Items -->
+      <div id="menu-list" class="grid grid-2">
+        <div class="loader" style="grid-column:1/-1;"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Reviews Section -->
+      <div class="mt-4" id="reviews-section" style="display:none;">
+        <h2 class="section-title mb-3">Reviews & Ratings ⭐</h2>
+        
+        <div id="review-form-container" style="display:none;" class="glass-card mb-3">
+          <h3 class="mb-2">Write a Review</h3>
+          <div class="flex gap-1 mb-2" id="star-select">
+            <span class="stars interactive" style="font-size: 1.5rem; cursor: pointer;">
+              <span onclick="selectStar(1)">☆</span>
+              <span onclick="selectStar(2)">☆</span>
+              <span onclick="selectStar(3)">☆</span>
+              <span onclick="selectStar(4)">☆</span>
+              <span onclick="selectStar(5)">☆</span>
+            </span>
+          </div>
+          <textarea class="form-input mb-2" id="review-comment" placeholder="Share your experience..."></textarea>
+          <button class="btn btn-primary" onclick="submitReview()">Submit Review</button>
+        </div>
+
+        <div id="reviews-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    const restId = new URLSearchParams(window.location.search).get('id');
+    let selectedCategory = '';
+    let selectedRating = 0;
+    let restaurant = null;
+
+    const debouncedMenuSearch = debounce(loadMenu, 400);
+
+    async function loadRestaurant() {
+      try {
+        const data = await api.get(`/restaurants/${restId}`);
+        restaurant = data.data;
+        document.title = `${restaurant.name} — AnnSeva`;
+
+        document.getElementById('rest-header').innerHTML = `
+          <div class="glass-card" style="padding: 0; overflow: hidden;">
+            <div style="position: relative; height: 280px; overflow: hidden;">
+              <img src="${restaurant.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200'}" alt="${restaurant.name}" style="width: 100%; height: 100%; object-fit: cover;">
+              <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 30px; background: linear-gradient(transparent, rgba(0,0,0,0.85));">
+                <h1 style="font-size: 2rem; margin-bottom: 8px;">${restaurant.name}</h1>
+                <p style="color: var(--text-secondary); margin-bottom: 12px;">${restaurant.description}</p>
+                <div class="flex items-center gap-2" style="flex-wrap: wrap;">
+                  <span class="badge-tag badge-rating">⭐ ${restaurant.rating} (${restaurant.numReviews} reviews)</span>
+                  <span class="badge-tag badge-status">🕐 ${restaurant.deliveryTime}</span>
+                  <span class="badge-tag badge-discount">💰 ${formatPrice(restaurant.deliveryCharge)} delivery</span>
+                  <span class="badge-tag" style="background: rgba(255,255,255,0.1); color: var(--text-secondary);">Min order: ${formatPrice(restaurant.minOrder)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById('menu-filters').style.display = 'flex';
+        loadMenu();
+        loadReviews();
+
+        if (api.isLoggedIn()) {
+          document.getElementById('review-form-container').style.display = 'block';
+        }
+      } catch (err) {
+        document.getElementById('rest-header').innerHTML = '<div class="empty-state"><h3>Restaurant not found</h3></div>';
+      }
+    }
+
+    async function loadMenu() {
+      const search = document.getElementById('menu-search')?.value || '';
+      const sort = document.getElementById('menu-sort')?.value || '';
+      const vegOnly = document.getElementById('veg-only')?.checked || false;
+
+      let url = `/menu/restaurant/${restId}?limit=50`;
+      if (search) url += `&search=${encodeURIComponent(search)}`;
+      if (sort) url += `&sort=${sort}`;
+      if (vegOnly) url += `&isVeg=true`;
+      if (selectedCategory) url += `&category=${selectedCategory}`;
+
+      try {
+        const data = await api.get(url);
+        const el = document.getElementById('menu-list');
+
+        // Build category tabs
+        const categories = [...new Set(data.data.map(i => i.category))];
+        const tabsEl = document.getElementById('category-tabs');
+        tabsEl.innerHTML = `
+          <button class="tab ${!selectedCategory ? 'active' : ''}" onclick="filterMenuCat('')">All</button>
+          ${categories.map(c => `
+            <button class="tab ${selectedCategory === c ? 'active' : ''}" onclick="filterMenuCat('${c}')">${c.replace(/-/g, ' ')}</button>
+          `).join('')}
+        `;
+
+        if (data.data.length === 0) {
+          el.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🍽️</div><h3>No items found</h3></div>';
+          return;
+        }
+
+        el.innerHTML = data.data.map(item => `
+          <div class="food-card fade-in">
+            <img src="${item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500'}" alt="${item.name}" class="food-card-img" loading="lazy" onclick="location.href='/food.html?id=${item._id}'" style="cursor:pointer;">
+            <div class="food-card-body">
+              <div class="flex items-center gap-1 mb-1">
+                <span class="badge-tag ${item.isVeg ? 'badge-veg' : 'badge-nonveg'}" style="font-size: 0.65rem;">${item.isVeg ? 'VEG' : 'NON-VEG'}</span>
+                <span class="badge-tag badge-rating" style="font-size: 0.65rem;">⭐ ${item.rating}</span>
+              </div>
+              <div class="food-card-name">${item.name}</div>
+              <div class="food-card-desc">${item.description}</div>
+              <div class="food-card-footer">
+                <span class="price">${formatPrice(item.price)}</span>
+                <button class="btn btn-primary btn-sm" onclick="addToCart('${item._id}')">+ Add</button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch {}
+    }
+
+    function filterMenuCat(cat) {
+      selectedCategory = cat;
+      loadMenu();
+    }
+
+    async function addToCart(menuItemId) {
+      if (!auth.requireAuth()) return;
+      try {
+        await api.post('/cart', { menuItemId, quantity: 1 });
+        showToast('Added to cart! 🛒', 'success');
+        updateCartBadge();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    // Reviews
+    function selectStar(n) {
+      selectedRating = n;
+      const spans = document.querySelectorAll('#star-select .stars span');
+      spans.forEach((s, i) => s.textContent = i < n ? '★' : '☆');
+    }
+
+    async function submitReview() {
+      if (!selectedRating) return showToast('Select a rating', 'warning');
+      try {
+        await api.post('/reviews', {
+          restaurantId: restId,
+          rating: selectedRating,
+          comment: document.getElementById('review-comment').value,
+        });
+        showToast('Review submitted! ⭐', 'success');
+        document.getElementById('review-comment').value = '';
+        selectStar(0);
+        loadReviews();
+        loadRestaurant();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function loadReviews() {
+      try {
+        const data = await api.get(`/reviews/restaurant/${restId}`);
+        document.getElementById('reviews-section').style.display = 'block';
+        const el = document.getElementById('reviews-list');
+
+        if (data.data.length === 0) {
+          el.innerHTML = '<p class="text-muted">No reviews yet. Be the first!</p>';
+          return;
+        }
+
+        el.innerHTML = data.data.map(r => `
+          <div class="glass-card mb-2" style="padding: 18px;">
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-1">
+                <div class="nav-avatar" style="width: 32px; height: 32px; font-size: 0.75rem;">${(r.user?.name || 'U').charAt(0)}</div>
+                <strong style="font-size: 0.9rem;">${r.user?.name || 'User'}</strong>
+              </div>
+              <span class="badge-tag badge-rating">⭐ ${r.rating}</span>
+            </div>
+            ${r.comment ? `<p class="text-muted" style="font-size: 0.9rem;">${r.comment}</p>` : ''}
+            <div class="text-muted" style="font-size: 0.75rem; margin-top: 8px;">${timeAgo(r.createdAt)}</div>
+          </div>
+        `).join('');
+      } catch {}
+    }
+
+    if (restId) loadRestaurant();
+    else window.location.href = '/restaurants.html';
+  </script>
+</body>
+</html>

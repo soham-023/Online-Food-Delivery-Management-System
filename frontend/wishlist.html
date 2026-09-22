@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wishlist — AnnSeva</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <h1 class="section-title fade-in">My Favorites ❤️</h1>
+      <p class="section-subtitle mb-3 fade-in">Your saved items and restaurants</p>
+
+      <div class="tabs fade-in stagger-1">
+        <button class="tab active" onclick="showTab('items', this)">🍕 Food Items</button>
+        <button class="tab" onclick="showTab('restaurants', this)">🏪 Restaurants</button>
+      </div>
+
+      <div id="items-tab">
+        <div id="wishlist-items" class="grid grid-2">
+          <div class="loader" style="grid-column:1/-1;"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <div id="restaurants-tab" style="display: none;">
+        <div id="wishlist-restaurants" class="grid grid-3">
+          <div class="loader" style="grid-column:1/-1;"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+
+    function showTab(tab, el) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('items-tab').style.display = tab === 'items' ? 'block' : 'none';
+      document.getElementById('restaurants-tab').style.display = tab === 'restaurants' ? 'block' : 'none';
+    }
+
+    async function loadWishlist() {
+      try {
+        const data = await api.get('/wishlist');
+        const wl = data.data;
+
+        // Items
+        const itemsEl = document.getElementById('wishlist-items');
+        if (!wl.items || wl.items.length === 0) {
+          itemsEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🍕</div><h3 class="empty-state-title">No favorite items</h3><p class="empty-state-text">Browse restaurants and tap the heart to save items</p><a href="/restaurants.html" class="btn btn-primary">Browse →</a></div>';
+        } else {
+          itemsEl.innerHTML = wl.items.map(item => `
+            <div class="food-card fade-in">
+              <img src="${item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500'}" alt="${item.name}" class="food-card-img" onclick="location.href='/food.html?id=${item._id}'" style="cursor:pointer;">
+              <div class="food-card-body">
+                <div class="food-card-name">${item.name}</div>
+                <div class="food-card-footer">
+                  <span class="price">${formatPrice(item.price)}</span>
+                  <div class="flex gap-1">
+                    <button class="btn btn-primary btn-sm" onclick="addToCart('${item._id}')">+ Add</button>
+                    <button class="btn btn-danger btn-sm" onclick="removeWishlistItem('${item._id}')">♥</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        // Restaurants
+        const restEl = document.getElementById('wishlist-restaurants');
+        if (!wl.restaurants || wl.restaurants.length === 0) {
+          restEl.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🏪</div><h3 class="empty-state-title">No favorite restaurants</h3></div>';
+        } else {
+          restEl.innerHTML = wl.restaurants.map(r => `
+            <div class="restaurant-card fade-in" onclick="location.href='/restaurant.html?id=${r._id}'">
+              <div class="card-img-wrapper">
+                <img src="${r.image || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'}" alt="${r.name}" class="card-img" loading="lazy">
+                <button class="wishlist-btn active" onclick="event.stopPropagation(); removeWishlistRest('${r._id}')">♥</button>
+              </div>
+              <div class="card-body">
+                <h3 class="card-title">${r.name}</h3>
+                <div class="restaurant-meta">
+                  <span>⭐ ${r.rating}</span>
+                  <span>🕐 ${r.deliveryTime}</span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) { showToast('Failed to load wishlist', 'error'); }
+    }
+
+    async function addToCart(id) {
+      try {
+        await api.post('/cart', { menuItemId: id, quantity: 1 });
+        showToast('Added to cart! 🛒', 'success');
+        updateCartBadge();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function removeWishlistItem(id) {
+      try {
+        await api.post(`/wishlist/item/${id}`);
+        showToast('Removed from favorites', 'info');
+        loadWishlist();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function removeWishlistRest(id) {
+      try {
+        await api.post(`/wishlist/restaurant/${id}`);
+        showToast('Removed from favorites', 'info');
+        loadWishlist();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    loadWishlist();
+  </script>
+</body>
+</html>

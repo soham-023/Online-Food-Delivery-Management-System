@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users — AnnSeva Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h1 class="section-title">Manage Users 👥</h1>
+          <div class="flex gap-2 mt-2">
+            <a href="/admin.html" class="btn btn-secondary btn-sm">← Dashboard</a>
+            <a href="/admin-restaurants.html" class="btn btn-secondary btn-sm">🏪 Restaurants</a>
+            <a href="/admin-orders.html" class="btn btn-secondary btn-sm">📦 Orders</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Search & Filter -->
+      <div class="flex gap-2 mb-3" style="flex-wrap: wrap;">
+        <div class="hero-search" style="flex: 1; max-width: 400px;">
+          <input type="text" id="user-search" placeholder="Search by name or email..." oninput="debouncedUserSearch()">
+          <button onclick="loadUsers()">🔍</button>
+        </div>
+        <select class="form-input" id="user-role-filter" style="width: auto;" onchange="loadUsers()">
+          <option value="">All Roles</option>
+          <option value="customer">👤 Customer</option>
+          <option value="restaurant">🏪 Restaurant</option>
+          <option value="admin">🔧 Admin</option>
+        </select>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr><th>Avatar</th><th>Name</th><th>Email</th><th>Role</th><th>Phone</th><th>Status</th><th>Joined</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="users-table"></tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between mt-3" id="users-pagination" style="display: none;">
+        <button class="btn btn-secondary btn-sm" onclick="changeUserPage(-1)">← Prev</button>
+        <span class="text-muted" id="users-pinfo"></span>
+        <button class="btn btn-secondary btn-sm" onclick="changeUserPage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+
+    let userPage = 1;
+    const debouncedUserSearch = debounce(loadUsers, 400);
+
+    async function loadUsers() {
+      const search = document.getElementById('user-search').value;
+      const role = document.getElementById('user-role-filter').value;
+
+      try {
+        let url = `/admin/users?page=${userPage}&limit=20`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (role) url += `&role=${role}`;
+
+        const data = await api.get(url);
+        const el = document.getElementById('users-table');
+
+        if (data.data.length === 0) {
+          el.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding: 40px;">No users found</td></tr>';
+          document.getElementById('users-pagination').style.display = 'none';
+          return;
+        }
+
+        el.innerHTML = data.data.map(u => `
+          <tr style="${u.isBlocked ? 'opacity: 0.5;' : ''}">
+            <td>
+              <div class="nav-avatar" style="width: 36px; height: 36px; font-size: 0.8rem;">${u.name.charAt(0).toUpperCase()}</div>
+            </td>
+            <td><strong>${u.name}</strong></td>
+            <td style="font-size: 0.85rem;">${u.email}</td>
+            <td><span class="badge-tag badge-status">${u.role}</span></td>
+            <td class="text-muted">${u.phone || '-'}</td>
+            <td>
+              ${u.isBlocked 
+                ? '<span class="status-badge status-cancelled">Blocked</span>' 
+                : '<span class="status-badge status-delivered">Active</span>'}
+            </td>
+            <td class="text-muted" style="font-size: 0.8rem;">${new Date(u.createdAt).toLocaleDateString()}</td>
+            <td>
+              ${u.role !== 'admin' ? `
+                <button class="btn ${u.isBlocked ? 'btn-success' : 'btn-danger'} btn-sm" 
+                  onclick="toggleBlock('${u._id}')">${u.isBlocked ? '✅ Unblock' : '🚫 Block'}</button>
+              ` : '<span class="text-muted">—</span>'}
+            </td>
+          </tr>
+        `).join('');
+
+        const pg = data.pagination;
+        const pgEl = document.getElementById('users-pagination');
+        if (pg.pages > 1) {
+          pgEl.style.display = 'flex';
+          document.getElementById('users-pinfo').textContent = `Page ${pg.page} of ${pg.pages} (${pg.total} users)`;
+        } else { pgEl.style.display = 'none'; }
+
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function changeUserPage(dir) {
+      userPage += dir;
+      loadUsers();
+    }
+
+    async function toggleBlock(userId) {
+      try {
+        const data = await api.put(`/admin/users/${userId}/block`);
+        showToast(data.message, data.data.isBlocked ? 'warning' : 'success');
+        loadUsers();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>

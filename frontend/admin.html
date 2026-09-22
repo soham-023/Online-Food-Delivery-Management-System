@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — AnnSeva</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="page-content">
+    <div class="container">
+      <h1 class="section-title fade-in">Admin Dashboard 📊</h1>
+      <p class="section-subtitle mb-3 fade-in">Manage your platform</p>
+
+      <!-- Quick Nav -->
+      <div class="flex gap-2 mb-4 fade-in stagger-1" style="flex-wrap: wrap;">
+        <a href="/admin.html" class="btn btn-primary btn-sm">📊 Dashboard</a>
+        <a href="/admin-restaurants.html" class="btn btn-secondary btn-sm">🏪 Restaurants</a>
+        <a href="/admin-menu.html" class="btn btn-secondary btn-sm">🍕 Menu Items</a>
+        <a href="/admin-orders.html" class="btn btn-secondary btn-sm">📦 Orders</a>
+        <a href="/admin-users.html" class="btn btn-secondary btn-sm">👥 Users</a>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-4 mb-4 fade-in stagger-2" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(255,107,53,0.15); color: var(--accent-orange);">👥</div>
+          <div class="stat-value" id="stat-users">--</div>
+          <div class="stat-label">Total Customers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(0,214,143,0.15); color: var(--accent-green);">📦</div>
+          <div class="stat-value" id="stat-orders">--</div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(124,92,252,0.15); color: var(--accent-purple);">💰</div>
+          <div class="stat-value" id="stat-revenue">--</div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: rgba(59,130,246,0.15); color: var(--accent-blue);">🏪</div>
+          <div class="stat-value" id="stat-restaurants">--</div>
+          <div class="stat-label">Restaurants</div>
+        </div>
+      </div>
+
+      <!-- Today Stats -->
+      <div class="grid grid-2 mb-4 fade-in stagger-3">
+        <div class="glass-card">
+          <h3 class="mb-2">📈 Today's Performance</h3>
+          <div class="flex gap-2">
+            <div style="flex: 1; text-align: center; padding: 20px; background: var(--bg-glass); border-radius: var(--radius-md);">
+              <div style="font-size: 2rem; font-weight: 800; color: var(--accent-orange);" id="today-orders">0</div>
+              <div class="text-muted" style="font-size: 0.85rem;">Orders Today</div>
+            </div>
+            <div style="flex: 1; text-align: center; padding: 20px; background: var(--bg-glass); border-radius: var(--radius-md);">
+              <div style="font-size: 2rem; font-weight: 800; color: var(--accent-green);" id="today-revenue">₹0</div>
+              <div class="text-muted" style="font-size: 0.85rem;">Revenue Today</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card">
+          <h3 class="mb-2">📊 Orders by Status</h3>
+          <div id="status-bars"></div>
+        </div>
+      </div>
+
+      <!-- Monthly Revenue Chart (CSS bars) -->
+      <div class="glass-card mb-4 fade-in stagger-3">
+        <h3 class="mb-3">💹 Monthly Revenue (Last 6 Months)</h3>
+        <div id="revenue-chart" style="display: flex; align-items: flex-end; gap: 12px; height: 200px; padding: 0 20px;"></div>
+      </div>
+
+      <!-- Recent Orders -->
+      <div class="glass-card fade-in stagger-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3>📦 Recent Orders</h3>
+          <a href="/admin-orders.html" class="btn btn-secondary btn-sm">View All →</a>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Restaurant</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="recent-orders"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!auth.requireAuth()) {}
+    const user = api.getUser();
+    if (user && user.role !== 'admin' && user.role !== 'restaurant') {
+      showToast('Access denied', 'error');
+      window.location.href = '/index.html';
+    }
+    if (user && user.role === 'restaurant') {
+      const usersLink = document.querySelector('a[href="/admin-users.html"]');
+      if (usersLink) usersLink.style.display = 'none';
+    }
+
+    async function loadDashboard() {
+      try {
+        const data = await api.get('/admin/dashboard');
+        const d = data.data;
+
+        // Animate stat counters
+        animateCounter('stat-users', d.totalUsers);
+        animateCounter('stat-orders', d.totalOrders);
+        animateCounter('stat-restaurants', d.totalRestaurants);
+        document.getElementById('stat-revenue').textContent = formatPrice(d.totalRevenue);
+
+        document.getElementById('today-orders').textContent = d.todayOrders;
+        document.getElementById('today-revenue').textContent = formatPrice(d.todayRevenue);
+
+        // Order status bars
+        const statusEl = document.getElementById('status-bars');
+        const statusColors = {
+          placed: '#3b82f6', confirmed: '#7c5cfc', preparing: '#f59e0b',
+          out_for_delivery: '#ff6b35', delivered: '#00d68f', cancelled: '#ef4444',
+        };
+        const totalOrdersForBars = d.ordersByStatus.reduce((s, o) => s + o.count, 0) || 1;
+        statusEl.innerHTML = d.ordersByStatus.map(s => `
+          <div style="margin-bottom: 8px;">
+            <div class="flex justify-between" style="font-size: 0.8rem; margin-bottom: 4px;">
+              <span style="text-transform: capitalize;">${s._id.replace(/_/g, ' ')}</span>
+              <span>${s.count}</span>
+            </div>
+            <div style="height: 6px; background: var(--bg-glass); border-radius: 3px; overflow: hidden;">
+              <div style="height: 100%; width: ${(s.count / totalOrdersForBars) * 100}%; background: ${statusColors[s._id] || '#666'}; border-radius: 3px; transition: width 1s ease;"></div>
+            </div>
+          </div>
+        `).join('');
+
+        // Monthly revenue chart
+        const chartEl = document.getElementById('revenue-chart');
+        if (d.monthlyRevenue && d.monthlyRevenue.length > 0) {
+          const maxRev = Math.max(...d.monthlyRevenue.map(m => m.revenue)) || 1;
+          chartEl.innerHTML = d.monthlyRevenue.map(m => `
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+              <div style="font-size: 0.7rem; color: var(--accent-green);">${formatPrice(m.revenue)}</div>
+              <div style="width: 100%; height: ${(m.revenue / maxRev) * 160}px; background: var(--gradient-primary); border-radius: 6px 6px 0 0; min-height: 8px; transition: height 1s ease;"></div>
+              <div style="font-size: 0.7rem; color: var(--text-muted);">${m._id.split('-')[1]}/${m._id.split('-')[0].slice(2)}</div>
+              <div style="font-size: 0.65rem; color: var(--text-muted);">${m.orders} orders</div>
+            </div>
+          `).join('');
+        } else {
+          chartEl.innerHTML = '<p class="text-muted text-center" style="width: 100%; padding: 40px;">No data yet</p>';
+        }
+
+        // Recent orders table
+        const tableEl = document.getElementById('recent-orders');
+        tableEl.innerHTML = d.recentOrders.map(o => `
+          <tr onclick="location.href='/order-tracking.html?id=${o._id}'" style="cursor: pointer;">
+            <td><strong>#${o._id.slice(-8).toUpperCase()}</strong></td>
+            <td>${o.user?.name || 'N/A'}</td>
+            <td>${o.restaurant?.name || 'N/A'}</td>
+            <td class="price">${formatPrice(o.totalPrice)}</td>
+            <td><span class="status-badge ${getStatusColor(o.status)}">${o.status.replace(/_/g, ' ')}</span></td>
+            <td class="text-muted" style="font-size: 0.8rem;">${new Date(o.createdAt).toLocaleDateString()}</td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        showToast('Failed to load dashboard: ' + err.message, 'error');
+      }
+    }
+
+    function animateCounter(id, target) {
+      const el = document.getElementById(id);
+      let current = 0;
+      const step = Math.ceil(target / 30);
+      const timer = setInterval(() => {
+        current += step;
+        if (current >= target) {
+          current = target;
+          clearInterval(timer);
+        }
+        el.textContent = current.toLocaleString();
+      }, 40);
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
