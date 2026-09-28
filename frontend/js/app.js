@@ -1,4 +1,5 @@
 // ===== ANNSEVA — API HELPER =====
+
 const API_BASE = '/api';
 
 const api = {
@@ -38,6 +39,7 @@ const api = {
     }
 
     // Don't set Content-Type for FormData (multipart)
+    
     if (!(options.body instanceof FormData)) {
       headers['Content-Type'] = 'application/json';
       if (options.body && typeof options.body === 'object') {
