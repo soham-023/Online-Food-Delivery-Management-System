@@ -8,6 +8,7 @@ exports.getNotifications = asyncHandler(async (req, res) => {
     order: [['createdAt', 'DESC']],
     limit: 50,
   });
+  
 
   const unreadCount = await Notification.count({
     where: { userId: req.user.id, isRead: false },
@@ -15,6 +16,7 @@ exports.getNotifications = asyncHandler(async (req, res) => {
 
   res.json({ success: true, data: notifications, unreadCount });
 });
+
 
 
 exports.markAsRead = asyncHandler(async (req, res) => {
