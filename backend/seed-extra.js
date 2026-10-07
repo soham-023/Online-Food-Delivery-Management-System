@@ -3,6 +3,7 @@ const { sequelize, User, Restaurant, MenuItem, Coupon } = require('./models');
 
 const addExtra = async () => {
   try {
+    
     await sequelize.authenticate();
     console.log('✅ Connected');
 
@@ -20,6 +21,7 @@ const addExtra = async () => {
         phone: '020-77001100', ownerId: owner.id,
         rating: 4.7, numReviews: 245, deliveryTime: '30-40 min', deliveryCharge: 30, minOrder: 200,
       },
+      
       {
         name: 'Sushi & More',
         description: 'Premium Japanese dining — fresh sushi rolls, ramen bowls, and authentic Japanese flavors.',
