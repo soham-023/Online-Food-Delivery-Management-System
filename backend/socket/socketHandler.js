@@ -3,6 +3,7 @@ const { User } = require('../models');
 
 const setupSocket = (io) => {
   // Authentication middleware for Socket.io
+  
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.token || socket.handshake.query.token;
@@ -23,6 +24,7 @@ const setupSocket = (io) => {
     console.log(`🔌 Socket connected: ${socket.id}${socket.user ? ` (User: ${socket.user.name})` : ''}`);
 
     // Join order room for tracking
+    
     socket.on('joinOrder', (orderId) => {
       socket.join(`order_${orderId}`);
       console.log(`📦 Socket ${socket.id} joined order room: order_${orderId}`);
