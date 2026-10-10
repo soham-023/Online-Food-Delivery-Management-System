@@ -4,6 +4,7 @@ const asyncHandler = require('../utils/asyncHandler');
 
 exports.getNotifications = asyncHandler(async (req, res) => {
   const notifications = await Notification.findAll({
+    
     where: { userId: req.user.id },
     order: [['createdAt', 'DESC']],
     limit: 50,
@@ -21,6 +22,7 @@ exports.getNotifications = asyncHandler(async (req, res) => {
 
 exports.markAsRead = asyncHandler(async (req, res) => {
   await Notification.update({ isRead: true }, { where: { id: req.params.id } });
+  
   res.json({ success: true });
 });
 
