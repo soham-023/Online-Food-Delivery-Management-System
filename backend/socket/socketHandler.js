@@ -17,6 +17,7 @@ const setupSocket = (io) => {
       next();
     } catch (error) {
       next(); // Allow connection even without auth (for public tracking)
+      
     }
   });
 
@@ -24,6 +25,7 @@ const setupSocket = (io) => {
     console.log(`🔌 Socket connected: ${socket.id}${socket.user ? ` (User: ${socket.user.name})` : ''}`);
 
     // Join order room for tracking
+    
     
     socket.on('joinOrder', (orderId) => {
       socket.join(`order_${orderId}`);
@@ -38,6 +40,7 @@ const setupSocket = (io) => {
 
     // Delivery location update (from delivery person / admin simulation)
     // SECURITY: Only admin or restaurant roles can update delivery location
+    
     socket.on('updateDeliveryLocation', async (data) => {
       if (!socket.user || !['admin', 'restaurant'].includes(socket.user.role)) {
         return socket.emit('error', { message: 'Unauthorized: Only admin or restaurant can update delivery location' });
