@@ -16,6 +16,7 @@ exports.getNotifications = asyncHandler(async (req, res) => {
   });
 
   res.json({ success: true, data: notifications, unreadCount });
+  
 });
 
 
@@ -28,6 +29,7 @@ exports.markAsRead = asyncHandler(async (req, res) => {
 
 
 exports.markAllAsRead = asyncHandler(async (req, res) => {
+  
   await Notification.update({ isRead: true }, { where: { userId: req.user.id, isRead: false } });
   res.json({ success: true });
 });
