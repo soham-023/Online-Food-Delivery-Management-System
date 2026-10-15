@@ -4,6 +4,7 @@ const API_BASE = '/api';
 
 const api = {
   token: localStorage.getItem('token') || '',
+  
 
   setToken(token) {
     this.token = token;
@@ -24,6 +25,7 @@ const api = {
 
   setUser(user) {
     localStorage.setItem('user', JSON.stringify(user));
+    
   },
 
   isLoggedIn() {
@@ -58,6 +60,7 @@ const api = {
       return data;
     } catch (error) {
       if (error.message === 'Not authorized, token invalid' || error.message === 'Token expired') {
+        
         this.clearToken();
         window.location.href = '/login.html';
       }
