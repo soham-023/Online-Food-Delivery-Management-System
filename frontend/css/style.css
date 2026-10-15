@@ -38,6 +38,7 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 20px rgba(255, 107, 53, 0.15);
+  
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -75,6 +76,7 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
+
 
 body::before {
   content: '';
