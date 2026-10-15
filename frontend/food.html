@@ -16,6 +16,7 @@
       <div class="mt-4" id="food-reviews"></div>
     </div>
   </div>
+  
 
   <script src="/js/app.js"></script>
   <script>
@@ -24,6 +25,7 @@
     async function loadFoodDetail() {
       try {
         const data = await api.get(`/menu/${itemId}`);
+        
         const item = data.data;
         document.title = `${item.name} — AnnSeva`;
 
@@ -36,6 +38,7 @@
               <div style="padding: 40px; display: flex; flex-direction: column; justify-content: center;">
                 <div class="flex items-center gap-1 mb-2">
                   <span class="badge-tag ${item.isVeg ? 'badge-veg' : 'badge-nonveg'}">${item.isVeg ? '🟢 VEG' : '🔴 NON-VEG'}</span>
+                  
                   <span class="badge-tag badge-rating">⭐ ${item.rating} (${item.numReviews})</span>
                   <span class="badge-tag" style="background: rgba(255,255,255,0.05); color: var(--text-secondary);">${item.category}</span>
                 </div>
