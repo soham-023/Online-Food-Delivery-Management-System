@@ -7,10 +7,12 @@ const validate = (req, res, next) => {
     return res.status(400).json({
       success: false,
       message: errors.array().map((e) => e.msg).join(', '),
+      
       errors: errors.array(),
     });
   }
   next();
+  
 };
 
 
@@ -19,6 +21,7 @@ const signupRules = [
   body('email').trim().isEmail().withMessage('Please provide a valid email').normalizeEmail(),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('role').optional().isIn(['customer', 'restaurant', 'admin']).withMessage('Invalid role'),
+  
 ];
 
 const loginRules = [
