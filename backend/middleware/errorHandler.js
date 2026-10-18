@@ -23,6 +23,7 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'SequelizeValidationError') {
     statusCode = 400;
     message = err.errors.map((e) => e.message).join(', ');
+    
   }
 
   
@@ -33,7 +34,9 @@ const errorHandler = (err, req, res, next) => {
   }
 
   if (err.name === 'TokenExpiredError') {
+    
     statusCode = 401;
+    
     
     message = 'Token expired';
   }
