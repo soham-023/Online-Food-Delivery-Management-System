@@ -2,6 +2,7 @@ const { MenuItem, Restaurant, Sequelize } = require('../models');
 const { Op } = Sequelize;
 const asyncHandler = require('../utils/asyncHandler');
 const { getImageUrl } = require('../middleware/upload');
+
 const ApiError = require('../utils/apiError');
 
 const MAX_LIMIT = 50;
@@ -13,6 +14,7 @@ exports.getMenuItems = asyncHandler(async (req, res) => {
   const offset = (page - 1) * cappedLimit;
   
   const where = { restaurantId: req.params.restaurantId, isAvailable: true };
+  
 
   if (category) where.category = category;
   if (isVeg) where.isVeg = isVeg === 'true';
