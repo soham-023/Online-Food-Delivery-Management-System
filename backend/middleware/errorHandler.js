@@ -17,6 +17,7 @@ const errorHandler = (err, req, res, next) => {
     const field = Object.keys(err.fields)[0];
     
     message = `Duplicate value for '${field}'. Please use another value.`;
+    
   }
 
  
@@ -39,6 +40,7 @@ const errorHandler = (err, req, res, next) => {
     
     
     message = 'Token expired';
+    
   }
 
   console.error('❌ Error:', message);
