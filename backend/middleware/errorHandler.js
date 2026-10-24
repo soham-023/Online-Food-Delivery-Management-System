@@ -6,6 +6,7 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'SequelizeDatabaseError' && err.message.includes('invalid input syntax for type uuid')) {
     statusCode = 400;
     
+    
     message = 'Resource not found or invalid ID format';
     
   }
@@ -13,8 +14,10 @@ const errorHandler = (err, req, res, next) => {
   
   if (err.name === 'SequelizeUniqueConstraintError') {
     statusCode = 400;
+
     
     const field = Object.keys(err.fields)[0];
+    
     
     message = `Duplicate value for '${field}'. Please use another value.`;
     
@@ -24,6 +27,7 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'SequelizeValidationError') {
     statusCode = 400;
     message = err.errors.map((e) => e.message).join(', ');
+    
     
   }
 
