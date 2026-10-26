@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       validate: {
         notEmpty: { msg: 'Item name is required' },
+        
       },
     },
     description: {
@@ -21,6 +22,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
       validate: {
         min: { args: [0], msg: 'Price must be a positive number' },
+        
       },
     },
     image: {
@@ -30,6 +32,7 @@ module.exports = (sequelize, DataTypes) => {
     category: {
       type: DataTypes.ENUM(
         'starters', 'main-course', 'desserts', 'beverages', 'snacks',
+        
         'biryani', 'pizza', 'burger', 'chinese', 'south-indian', 'north-indian', 'other'
       ),
       allowNull: false,
@@ -44,6 +47,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     isAvailable: {
       type: DataTypes.BOOLEAN,
+      
       defaultValue: true,
     },
     rating: {
@@ -62,6 +66,7 @@ module.exports = (sequelize, DataTypes) => {
 
   MenuItem.prototype.toJSON = function () {
     const values = { ...this.get() };
+    
     values._id = values.id;
     return values;
   };
