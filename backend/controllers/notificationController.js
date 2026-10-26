@@ -19,12 +19,14 @@ exports.getNotifications = asyncHandler(async (req, res) => {
 
   res.json({ success: true, data: notifications, unreadCount });
   
+  
 });
 
 
 
 exports.markAsRead = asyncHandler(async (req, res) => {
   await Notification.update({ isRead: true }, { where: { id: req.params.id } });
+  
   
   res.json({ success: true });
 });
