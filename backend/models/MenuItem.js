@@ -7,6 +7,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     name: {
       type: DataTypes.STRING,
+      
       allowNull: false,
       validate: {
         notEmpty: { msg: 'Item name is required' },
@@ -54,6 +55,7 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.FLOAT,
       defaultValue: 0,
       validate: { min: 0, max: 5 },
+      
     },
     numReviews: {
       type: DataTypes.INTEGER,
@@ -65,9 +67,12 @@ module.exports = (sequelize, DataTypes) => {
   });
 
   MenuItem.prototype.toJSON = function () {
+    
     const values = { ...this.get() };
     
+    
     values._id = values.id;
+    
     return values;
   };
 
