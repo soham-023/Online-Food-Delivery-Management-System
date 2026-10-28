@@ -5,6 +5,7 @@ const ApiError = require('../utils/apiError');
 
 exports.applyCoupon = asyncHandler(async (req, res) => {
   const { code, orderTotal } = req.body;
+  
 
   const coupon = await Coupon.findOne({ where: { code: code.toUpperCase(), isActive: true } });
 
@@ -14,14 +15,17 @@ exports.applyCoupon = asyncHandler(async (req, res) => {
 
   if (new Date(coupon.expiresAt) < new Date()) {
     throw new ApiError(400, 'Coupon has expired');
+    
   }
 
   if (coupon.usedCount >= coupon.usageLimit) {
     throw new ApiError(400, 'Coupon usage limit reached');
+    
   }
 
   if (orderTotal < coupon.minOrder) {
     throw new ApiError(400, `Minimum order amount is ₹${coupon.minOrder}`);
+    
   }
 
   let discount = 0;
@@ -29,6 +33,7 @@ exports.applyCoupon = asyncHandler(async (req, res) => {
     discount = Math.round((orderTotal * coupon.discountValue) / 100);
     if (coupon.maxDiscount > 0) {
       discount = Math.min(discount, coupon.maxDiscount);
+      
     }
   } else {
     discount = coupon.discountValue;
