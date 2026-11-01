@@ -7,6 +7,7 @@ const isConfigured = process.env.RAZORPAY_KEY_ID
   && !process.env.RAZORPAY_KEY_SECRET.includes('XXXXXXXXXXXXXXXX');
 
 
+
 let razorpayInstance;
 
 if (isConfigured) {
@@ -15,8 +16,10 @@ if (isConfigured) {
     key_secret: process.env.RAZORPAY_KEY_SECRET,
     
     
+    
   });
   console.log('💳 Razorpay: Configured with real keys');
+  
   
 } else {
 
