@@ -14,6 +14,7 @@ exports.signup = asyncHandler(async (req, res) => {
 
   const user = await User.create({
     name,
+    
     email,
     password,
     role: role || 'customer',
@@ -29,6 +30,7 @@ exports.signup = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
+    
     token,
     user: {
       _id: user.id,
@@ -42,6 +44,7 @@ exports.signup = asyncHandler(async (req, res) => {
 
 
 exports.login = asyncHandler(async (req, res) => {
+  
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -49,6 +52,7 @@ exports.login = asyncHandler(async (req, res) => {
   }
 
   const user = await User.scope('withPassword').findOne({
+    
     where: { email: email.toLowerCase() },
     include: [{ model: Address, as: 'addresses' }]
   });
