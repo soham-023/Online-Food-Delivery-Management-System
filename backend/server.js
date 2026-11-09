@@ -112,11 +112,17 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'AnnSeva API is running! 🚀', timestamp: new Date() });
 });
 
+// Unknown API routes: respond with a JSON 404 instead of leaving the request hanging
+app.all('/api/*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
 // Serve frontend for all non-API routes
 app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-  }
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 // Error handler
