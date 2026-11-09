@@ -266,7 +266,8 @@ cd backend
 npm install
 
 # 2. Configure environment
-# Edit backend/.env with your PostgreSQL credentials, Razorpay keys, etc.
+cp .env.example .env
+# Then edit backend/.env with your PostgreSQL credentials, Razorpay keys, etc.
 
 # 3. Seed the database with sample data
 npm run seed
@@ -316,6 +317,9 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
+
+# Pricing (optional — GST rate on the items total, default 0.05 = 5%)
+GST_RATE=0.05
 
 # Frontend URL
 CLIENT_URL=http://localhost:3000
