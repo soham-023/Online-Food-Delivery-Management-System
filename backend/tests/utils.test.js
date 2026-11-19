@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const ApiError = require('../utils/apiError');
 const asyncHandler = require('../utils/asyncHandler');
+
 const generateToken = require('../utils/generateToken');
 const roleGuard = require('../middleware/roleGuard');
 const errorHandler = require('../middleware/errorHandler');
@@ -30,6 +31,7 @@ describe('asyncHandler', () => {
   test('forwards rejected promises to next()', async () => {
     const boom = new Error('boom');
     let received;
+    
     await asyncHandler(async () => { throw boom; })({}, {}, (e) => { received = e; });
     assert.equal(received, boom);
   });
@@ -46,6 +48,7 @@ describe('generateToken', () => {
     process.env.JWT_SECRET = 'test-secret';
     const token = generateToken('user-123');
     const payload = jwt.verify(token, 'test-secret');
+    
     assert.equal(payload.id, 'user-123');
   });
 
@@ -65,6 +68,7 @@ describe('roleGuard', () => {
     const res = mockRes();
     roleGuard('admin')({}, res, () => assert.fail('next should not be called'));
     assert.equal(res.statusCode, 401);
+    
     assert.equal(res.body.success, false);
   });
 
