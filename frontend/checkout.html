@@ -146,8 +146,14 @@
 
     // Load checkout data from session
     try {
-      checkoutData = JSON.parse(sessionStorage.getItem('checkout') || '{}');
+      checkoutData = JSON.parse(sessionStorage.getItem('checkout') || '{}') || {};
     } catch { window.location.href = '/cart.html'; }
+
+    if (!Number.isFinite(checkoutData.subtotal) || checkoutData.subtotal <= 0) {
+      document.getElementById('place-order-btn').disabled = true;
+      showToast('Your checkout has expired. Please review your cart again.', 'warning');
+      window.location.replace('/cart.html');
+    }
 
     // Populate summary
     function populateSummary() {
