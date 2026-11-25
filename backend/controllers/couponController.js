@@ -39,8 +39,6 @@ exports.applyCoupon = asyncHandler(async (req, res) => {
     discount = coupon.discountValue;
   }
 
-  await coupon.increment('usedCount');
-
   res.json({
     success: true,
     data: {
