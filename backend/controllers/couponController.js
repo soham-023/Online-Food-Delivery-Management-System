@@ -1,6 +1,7 @@
 const { Coupon, Sequelize: { Op } } = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/apiError');
+const { calculateCouponDiscount } = require('../utils/couponPricing');
 
 
 exports.applyCoupon = asyncHandler(async (req, res) => {
@@ -28,18 +29,7 @@ exports.applyCoupon = asyncHandler(async (req, res) => {
     
   }
 
-  let discount = 0;
-  if (coupon.discountType === 'percentage') {
-    discount = Math.round((orderTotal * coupon.discountValue) / 100);
-    if (coupon.maxDiscount > 0) {
-      discount = Math.min(discount, coupon.maxDiscount);
-      
-    }
-  } else {
-    discount = coupon.discountValue;
-  }
-
-  await coupon.increment('usedCount');
+  const discount = calculateCouponDiscount(coupon, orderTotal);
 
   res.json({
     success: true,

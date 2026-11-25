@@ -2,6 +2,8 @@ const { Order, OrderItem, OrderStatusHistory, Cart, CartItem, Restaurant, Notifi
 const { sendEmail, orderConfirmationEmail, orderStatusEmail } = require('../utils/sendEmail');
 const asyncHandler = require('../utils/asyncHandler');
 const ApiError = require('../utils/apiError');
+const { calculateOrderTotals } = require('../utils/orderPricing');
+const { calculateCouponDiscount } = require('../utils/couponPricing');
 const { Sequelize: { Op } } = require('sequelize');
 
 const GST_RATE = parseFloat(process.env.GST_RATE || '0.05');
@@ -9,7 +11,7 @@ const MAX_LIMIT = 50;
 
 
 exports.placeOrder = asyncHandler(async (req, res) => {
-  const { deliveryAddress, paymentMethod, couponCode, discount, scheduledFor, isScheduled } = req.body;
+  const { deliveryAddress, paymentMethod, couponCode, scheduledFor, isScheduled } = req.body;
 
   const cart = await Cart.findOne({
     where: { userId: req.user.id },
@@ -26,10 +28,34 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   }
 
   const itemsPrice = cart.totalPrice;
-  const taxPrice = Math.round(itemsPrice * GST_RATE);
   const deliveryCharge = restaurant.deliveryCharge || 40;
-  const discountAmount = discount || 0;
-  const totalPrice = itemsPrice + taxPrice + deliveryCharge - discountAmount;
+  if (itemsPrice < restaurant.minOrder) {
+    throw new ApiError(400, `Minimum order amount is ₹${restaurant.minOrder}`);
+  }
+
+  let coupon = null;
+  let discountAmount = 0;
+
+  if (couponCode) {
+    coupon = await Coupon.findOne({ where: { code: couponCode.toUpperCase(), isActive: true } });
+    if (!coupon || new Date(coupon.expiresAt) < new Date()) {
+      throw new ApiError(400, 'Coupon is invalid or expired');
+    }
+    if (coupon.usedCount >= coupon.usageLimit) {
+      throw new ApiError(400, 'Coupon usage limit reached');
+    }
+    if (itemsPrice < coupon.minOrder) {
+      throw new ApiError(400, `Minimum order amount is ₹${coupon.minOrder}`);
+    }
+    discountAmount = calculateCouponDiscount(coupon, itemsPrice);
+  }
+
+  const totals = calculateOrderTotals({
+    itemsPrice,
+    deliveryCharge,
+    discount: discountAmount,
+    gstRate: GST_RATE,
+  });
 
   // Validate scheduled time if provided
   let validScheduledFor = null;
@@ -46,12 +72,8 @@ exports.placeOrder = asyncHandler(async (req, res) => {
     userId: req.user.id,
     restaurantId: restaurant.id,
     deliveryAddress,
-    itemsPrice,
-    taxPrice,
-    deliveryCharge,
-    discount: discountAmount,
-    totalPrice,
-    couponCode: couponCode || '',
+    ...totals,
+    couponCode: coupon?.code || '',
     paymentMethod,
     paymentStatus: paymentMethod === 'cod' ? 'pending' : 'pending',
     status: 'placed',
@@ -78,6 +100,7 @@ exports.placeOrder = asyncHandler(async (req, res) => {
   });
 
   await Cart.destroy({ where: { id: cart.id } });
+  if (coupon) await coupon.increment('usedCount');
 
   const scheduledMsg = order.isScheduled && order.scheduledFor
     ? ` Scheduled for ${new Date(order.scheduledFor).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}`

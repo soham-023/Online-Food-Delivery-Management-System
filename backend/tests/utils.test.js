@@ -8,6 +8,8 @@ const asyncHandler = require('../utils/asyncHandler');
 
 const generateToken = require('../utils/generateToken');
 const roleGuard = require('../middleware/roleGuard');
+const { calculateOrderTotals } = require('../utils/orderPricing');
+const { calculateCouponDiscount } = require('../utils/couponPricing');
 
 const errorHandler = require('../middleware/errorHandler');
 
@@ -26,6 +28,47 @@ describe('ApiError', () => {
     assert.equal(err.statusCode, 404);
     assert.equal(err.message, 'Restaurant not found');
     assert.equal(err.isOperational, true);
+  });
+});
+
+describe('calculateOrderTotals', () => {
+  test('calculates tax and totals from server-side prices', () => {
+    assert.deepEqual(calculateOrderTotals({
+      itemsPrice: 500,
+      deliveryCharge: 30,
+      discount: 50,
+    }), {
+      itemsPrice: 500,
+      taxPrice: 25,
+      deliveryCharge: 30,
+      discount: 50,
+      totalPrice: 505,
+    });
+  });
+
+  test('caps discounts at the item subtotal', () => {
+    const totals = calculateOrderTotals({ itemsPrice: 100, deliveryCharge: 20, discount: 150 });
+    assert.equal(totals.discount, 100);
+    assert.equal(totals.totalPrice, 25);
+  });
+});
+
+describe('calculateCouponDiscount', () => {
+  test('applies percentage discounts up to the configured cap', () => {
+    const discount = calculateCouponDiscount({
+      discountType: 'percentage',
+      discountValue: 25,
+      maxDiscount: 40,
+    }, 500);
+    assert.equal(discount, 40);
+  });
+
+  test('does not discount more than the subtotal', () => {
+    const discount = calculateCouponDiscount({
+      discountType: 'flat',
+      discountValue: 200,
+    }, 100);
+    assert.equal(discount, 100);
   });
 });
 

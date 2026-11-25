@@ -26,6 +26,7 @@
               <span>Subtotal</span>
               <span id="subtotal">₹0</span>
             </div>
+            <p id="minimum-order-note" class="text-muted" style="font-size: 0.8rem; margin: -4px 0 12px;"></p>
             <div class="summary-row">
               <span>GST (5%)</span>
               <span id="tax">₹0</span>
@@ -38,7 +39,7 @@
             <!-- Coupon -->
             <hr class="summary-divider">
             <div class="coupon-input-group mb-2">
-              <input type="text" class="form-input" id="coupon-code" placeholder="Coupon code">
+              <input type="text" class="form-input" id="coupon-code" placeholder="Coupon code" autocomplete="off" onkeydown="if(event.key==='Enter') applyCoupon()">
               <button class="btn btn-secondary btn-sm" onclick="applyCoupon()">Apply</button>
             </div>
             <div id="coupon-result" style="display: none;" class="mb-2">
@@ -53,7 +54,7 @@
               <span id="total-price">₹0</span>
             </div>
 
-            <button class="btn btn-primary btn-block btn-lg mt-3" onclick="goToCheckout()">
+            <button class="btn btn-primary btn-block btn-lg mt-3" id="checkout-button" onclick="goToCheckout()">
               Proceed to Checkout →
             </button>
             <button class="btn btn-secondary btn-block btn-sm mt-2" onclick="clearCart()">
@@ -77,6 +78,7 @@
 
     let cartData = null;
     let deliveryCharge = 40;
+    let minimumOrder = 0;
     let discountValue = 0;
     let appliedCoupon = '';
 
@@ -84,6 +86,8 @@
       try {
         const data = await api.get('/cart');
         cartData = data.data;
+        deliveryCharge = cartData.restaurant?.deliveryCharge ?? 40;
+        minimumOrder = cartData.restaurant?.minOrder ?? 0;
         const el = document.getElementById('cart-items');
 
         if (!cartData.items || cartData.items.length === 0) {
@@ -134,9 +138,21 @@
       const total = subtotal + tax + deliveryCharge - discountValue;
 
       document.getElementById('subtotal').textContent = formatPrice(subtotal);
+      document.getElementById('minimum-order-note').textContent = minimumOrder > subtotal
+        ? `Add ${formatPrice(minimumOrder - subtotal)} more to meet this restaurant's minimum order.`
+        : minimumOrder > 0 ? `Minimum order of ${formatPrice(minimumOrder)} reached.` : '';
+      document.getElementById('checkout-button').disabled = subtotal < minimumOrder;
       document.getElementById('tax').textContent = formatPrice(tax);
       document.getElementById('delivery-charge').textContent = formatPrice(deliveryCharge);
       document.getElementById('total-price').textContent = formatPrice(total);
+    }
+
+    function clearAppliedCoupon() {
+      discountValue = 0;
+      appliedCoupon = '';
+      document.getElementById('coupon-code').value = '';
+      document.getElementById('coupon-result').style.display = 'none';
+      updateSummary();
     }
 
     async function updateQty(itemId, qty) {
@@ -146,6 +162,7 @@
           return;
         }
         await api.put(`/cart/${itemId}`, { quantity: qty });
+        clearAppliedCoupon();
         loadCart();
       } catch (err) { showToast(err.message, 'error'); }
     }
@@ -153,6 +170,7 @@
     async function removeItem(itemId) {
       try {
         await api.delete(`/cart/${itemId}`);
+          clearAppliedCoupon();
         showToast('Item removed', 'info');
         loadCart();
         updateCartBadge();
@@ -163,6 +181,7 @@
       if (!confirm('Clear all items from cart?')) return;
       try {
         await api.delete('/cart');
+        clearAppliedCoupon();
         showToast('Cart cleared', 'info');
         loadCart();
         updateCartBadge();
@@ -170,8 +189,10 @@
     }
 
     async function applyCoupon() {
-      const code = document.getElementById('coupon-code').value.trim();
+      const codeInput = document.getElementById('coupon-code');
+      const code = codeInput.value.trim().toUpperCase();
       if (!code) return showToast('Enter a coupon code', 'warning');
+      codeInput.value = code;
       const subtotal = cartData.totalPrice || 0;
 
       try {
@@ -211,6 +232,7 @@
       const total = subtotal + tax + deliveryCharge - discountValue;
       sessionStorage.setItem('checkout', JSON.stringify({
         subtotal, tax, deliveryCharge, discount: discountValue, total, couponCode: appliedCoupon,
+        items: cartData.items.map(({ name, quantity, price }) => ({ name, quantity, price })),
       }));
       window.location.href = '/checkout.html';
     }
