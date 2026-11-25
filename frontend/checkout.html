@@ -143,6 +143,7 @@
     let checkoutData = {};
     let isScheduled = false;
     let scheduledFor = null;
+    let isSubmitting = false;
 
     // Load checkout data from session
     try {
@@ -255,10 +256,12 @@
 
     // Place Order
     async function placeOrder() {
+      if (isSubmitting) return;
       if (!selectedAddress) {
         return showToast('Please select a delivery address', 'warning');
       }
 
+      isSubmitting = true;
       const btn = document.getElementById('place-order-btn');
       btn.disabled = true;
       btn.innerHTML = '<div class="spinner spinner-sm"></div> Placing order...';
@@ -328,6 +331,7 @@
             modal: {
               ondismiss: function () {
                 showToast('Payment cancelled. Your order is saved.', 'warning');
+                isSubmitting = false;
                 btn.disabled = false;
                 btn.innerHTML = '🚀 Place Order';
               },
@@ -337,6 +341,7 @@
           const rzp = new Razorpay(options);
           rzp.on('payment.failed', function (response) {
             showToast('Payment failed: ' + (response.error?.description || 'Please try again'), 'error');
+            isSubmitting = false;
             btn.disabled = false;
             btn.innerHTML = '🚀 Place Order';
           });
@@ -349,6 +354,7 @@
         }
       } catch (err) {
         showToast(err.message, 'error');
+        isSubmitting = false;
         btn.disabled = false;
         btn.innerHTML = '🚀 Place Order';
       }
