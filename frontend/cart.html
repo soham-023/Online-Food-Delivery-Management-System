@@ -147,6 +147,14 @@
       document.getElementById('total-price').textContent = formatPrice(total);
     }
 
+    function clearAppliedCoupon() {
+      discountValue = 0;
+      appliedCoupon = '';
+      document.getElementById('coupon-code').value = '';
+      document.getElementById('coupon-result').style.display = 'none';
+      updateSummary();
+    }
+
     async function updateQty(itemId, qty) {
       try {
         if (qty <= 0) {
@@ -154,6 +162,7 @@
           return;
         }
         await api.put(`/cart/${itemId}`, { quantity: qty });
+        clearAppliedCoupon();
         loadCart();
       } catch (err) { showToast(err.message, 'error'); }
     }
@@ -161,6 +170,7 @@
     async function removeItem(itemId) {
       try {
         await api.delete(`/cart/${itemId}`);
+          clearAppliedCoupon();
         showToast('Item removed', 'info');
         loadCart();
         updateCartBadge();
@@ -171,6 +181,7 @@
       if (!confirm('Clear all items from cart?')) return;
       try {
         await api.delete('/cart');
+        clearAppliedCoupon();
         showToast('Cart cleared', 'info');
         loadCart();
         updateCartBadge();
