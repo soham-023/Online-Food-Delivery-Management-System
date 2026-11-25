@@ -39,7 +39,7 @@
             <!-- Coupon -->
             <hr class="summary-divider">
             <div class="coupon-input-group mb-2">
-              <input type="text" class="form-input" id="coupon-code" placeholder="Coupon code">
+              <input type="text" class="form-input" id="coupon-code" placeholder="Coupon code" autocomplete="off" onkeydown="if(event.key==='Enter') applyCoupon()">
               <button class="btn btn-secondary btn-sm" onclick="applyCoupon()">Apply</button>
             </div>
             <div id="coupon-result" style="display: none;" class="mb-2">
@@ -189,8 +189,10 @@
     }
 
     async function applyCoupon() {
-      const code = document.getElementById('coupon-code').value.trim();
+      const codeInput = document.getElementById('coupon-code');
+      const code = codeInput.value.trim().toUpperCase();
       if (!code) return showToast('Enter a coupon code', 'warning');
+      codeInput.value = code;
       const subtotal = cartData.totalPrice || 0;
 
       try {
