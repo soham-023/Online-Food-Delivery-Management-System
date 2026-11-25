@@ -29,6 +29,10 @@ exports.placeOrder = asyncHandler(async (req, res) => {
 
   const itemsPrice = cart.totalPrice;
   const deliveryCharge = restaurant.deliveryCharge || 40;
+  if (itemsPrice < restaurant.minOrder) {
+    throw new ApiError(400, `Minimum order amount is ₹${restaurant.minOrder}`);
+  }
+
   let coupon = null;
   let discountAmount = 0;
 
