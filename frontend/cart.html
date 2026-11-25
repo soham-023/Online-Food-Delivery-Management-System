@@ -230,6 +230,7 @@
       const total = subtotal + tax + deliveryCharge - discountValue;
       sessionStorage.setItem('checkout', JSON.stringify({
         subtotal, tax, deliveryCharge, discount: discountValue, total, couponCode: appliedCoupon,
+        items: cartData.items.map(({ name, quantity, price }) => ({ name, quantity, price })),
       }));
       window.location.href = '/checkout.html';
     }
