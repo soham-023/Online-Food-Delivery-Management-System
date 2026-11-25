@@ -17,7 +17,15 @@ exports.getCart = asyncHandler(async (req, res) => {
     cart = { items: [], totalPrice: 0 };
   }
 
-  res.json({ success: true, data: cart });
+  const firstItem = cart.items && cart.items[0];
+  const restaurant = firstItem
+    ? await Restaurant.findByPk(firstItem.restaurantId, {
+      attributes: ['id', 'name', 'deliveryCharge', 'minOrder'],
+    })
+    : null;
+  const cartData = typeof cart.toJSON === 'function' ? cart.toJSON() : cart;
+
+  res.json({ success: true, data: { ...cartData, restaurant } });
 });
 
 
