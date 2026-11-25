@@ -54,7 +54,7 @@
               <span id="total-price">₹0</span>
             </div>
 
-            <button class="btn btn-primary btn-block btn-lg mt-3" onclick="goToCheckout()">
+            <button class="btn btn-primary btn-block btn-lg mt-3" id="checkout-button" onclick="goToCheckout()">
               Proceed to Checkout →
             </button>
             <button class="btn btn-secondary btn-block btn-sm mt-2" onclick="clearCart()">
@@ -141,6 +141,7 @@
       document.getElementById('minimum-order-note').textContent = minimumOrder > subtotal
         ? `Add ${formatPrice(minimumOrder - subtotal)} more to meet this restaurant's minimum order.`
         : minimumOrder > 0 ? `Minimum order of ${formatPrice(minimumOrder)} reached.` : '';
+      document.getElementById('checkout-button').disabled = subtotal < minimumOrder;
       document.getElementById('tax').textContent = formatPrice(tax);
       document.getElementById('delivery-charge').textContent = formatPrice(deliveryCharge);
       document.getElementById('total-price').textContent = formatPrice(total);
