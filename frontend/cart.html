@@ -77,6 +77,7 @@
 
     let cartData = null;
     let deliveryCharge = 40;
+    let minimumOrder = 0;
     let discountValue = 0;
     let appliedCoupon = '';
 
@@ -84,6 +85,8 @@
       try {
         const data = await api.get('/cart');
         cartData = data.data;
+        deliveryCharge = cartData.restaurant?.deliveryCharge ?? 40;
+        minimumOrder = cartData.restaurant?.minOrder ?? 0;
         const el = document.getElementById('cart-items');
 
         if (!cartData.items || cartData.items.length === 0) {
