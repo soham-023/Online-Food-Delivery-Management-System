@@ -116,6 +116,7 @@
         <div>
           <div class="summary-box fade-in stagger-2">
             <h3 style="margin-bottom: 16px;">Order Summary</h3>
+            <div id="s-items" class="mb-2"></div>
             <div class="summary-row"><span>Subtotal</span><span id="s-subtotal">₹0</span></div>
             <div class="summary-row"><span>GST (5%)</span><span id="s-tax">₹0</span></div>
             <div class="summary-row"><span>Delivery</span><span id="s-delivery">₹40</span></div>
@@ -150,6 +151,18 @@
 
     // Populate summary
     function populateSummary() {
+      const itemsEl = document.getElementById('s-items');
+      itemsEl.replaceChildren();
+      (checkoutData.items || []).forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'summary-row';
+        const label = document.createElement('span');
+        label.textContent = `${item.name} × ${item.quantity}`;
+        const price = document.createElement('span');
+        price.textContent = formatPrice(item.price * item.quantity);
+        row.append(label, price);
+        itemsEl.appendChild(row);
+      });
       document.getElementById('s-subtotal').textContent = formatPrice(checkoutData.subtotal || 0);
       document.getElementById('s-tax').textContent = formatPrice(checkoutData.tax || 0);
       document.getElementById('s-delivery').textContent = formatPrice(checkoutData.deliveryCharge || 40);
