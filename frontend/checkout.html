@@ -227,15 +227,26 @@
     }
 
     async function saveAddress() {
+      const address = {
+        label: document.getElementById('addr-label').value,
+        phone: document.getElementById('addr-phone').value.trim(),
+        street: document.getElementById('addr-street').value.trim(),
+        city: document.getElementById('addr-city').value.trim(),
+        state: document.getElementById('addr-state').value.trim(),
+        pincode: document.getElementById('addr-pincode').value.trim(),
+      };
+      if (Object.values(address).some((value) => !value)) {
+        return showToast('Complete all address fields before saving', 'warning');
+      }
+      if (!/^[+0-9() -]{7,20}$/.test(address.phone)) {
+        return showToast('Enter a valid phone number', 'warning');
+      }
+      if (!/^\d{6}$/.test(address.pincode)) {
+        return showToast('Enter a valid 6-digit pincode', 'warning');
+      }
+
       try {
-        await api.post('/users/address', {
-          label: document.getElementById('addr-label').value,
-          phone: document.getElementById('addr-phone').value,
-          street: document.getElementById('addr-street').value,
-          city: document.getElementById('addr-city').value,
-          state: document.getElementById('addr-state').value,
-          pincode: document.getElementById('addr-pincode').value,
-        });
+        await api.post('/users/address', address);
         showToast('Address saved! ✅', 'success');
         document.getElementById('address-form').style.display = 'none';
         loadAddresses();
