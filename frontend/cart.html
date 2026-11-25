@@ -26,6 +26,7 @@
               <span>Subtotal</span>
               <span id="subtotal">₹0</span>
             </div>
+            <p id="minimum-order-note" class="text-muted" style="font-size: 0.8rem; margin: -4px 0 12px;"></p>
             <div class="summary-row">
               <span>GST (5%)</span>
               <span id="tax">₹0</span>
@@ -137,6 +138,9 @@
       const total = subtotal + tax + deliveryCharge - discountValue;
 
       document.getElementById('subtotal').textContent = formatPrice(subtotal);
+      document.getElementById('minimum-order-note').textContent = minimumOrder > subtotal
+        ? `Add ${formatPrice(minimumOrder - subtotal)} more to meet this restaurant's minimum order.`
+        : minimumOrder > 0 ? `Minimum order of ${formatPrice(minimumOrder)} reached.` : '';
       document.getElementById('tax').textContent = formatPrice(tax);
       document.getElementById('delivery-charge').textContent = formatPrice(deliveryCharge);
       document.getElementById('total-price').textContent = formatPrice(total);
